@@ -1,0 +1,87 @@
+{
+  "name": "@workspace/aniyomi-website",
+  "type": "module",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Official website for the Aniyomi app (fork).",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aniyomiorg/aniyomi-website.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aniyomiorg/aniyomi-website/issues"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "test": "pnpm lint && pnpm build",
+    "dev": "vitepress dev src --port ${PORT:-20997} --host 0.0.0.0",
+    "build": "vitepress build src",
+    "preview": "vitepress preview src",
+    "lint": "pnpm lint:es && pnpm lint:mdl && pnpm lint:style",
+    "lint:fix": "pnpm lint:es:fix && pnpm lint:style:fix",
+    "lint:es": "eslint . ",
+    "lint:es:fix": "eslint . --fix",
+    "lint:mdl": "markdownlint \"**/*.md\" \".github/**/*.md\" --enable sentences-per-line --disable MD025 MD033",
+    "lint:style": "stylelint '**/*.{styl,vue}' 'src/.vitepress/**/*.{styl,vue}'",
+    "lint:style:fix": "stylelint --fix '**/*.{styl,vue}' 'src/.vitepress/**/*.{styl,vue}'"
+  },
+  "dependencies": {
+    "@iconify-prerendered/vue-mdi": "0.28.1718880438",
+    "@octokit/rest": "21.0.2",
+    "@octokit/types": "13.6.1",
+    "@tanstack/vue-query": "5.61.3",
+    "@vueuse/core": "11.3.0",
+    "axios": "1.7.7",
+    "element-plus": "2.8.8",
+    "lodash.groupby": "4.6.0",
+    "markdown-it": "14.1.0",
+    "markdown-it-shortcode-tag": "1.1.0",
+    "moment": "2.30.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.26.0",
+    "@eslint/eslintrc": "^3.1.0",
+    "@mdit/plugin-attrs": "0.13.1",
+    "@mdit/plugin-figure": "0.13.1",
+    "@mdit/plugin-img-lazyload": "0.13.1",
+    "@mdit/plugin-img-mark": "0.13.1",
+    "@mdit/plugin-img-size": "0.13.1",
+    "@mdit/plugin-include": "0.13.1",
+    "@resvg/resvg-js": "2.6.2",
+    "@types/gtag.js": "0.0.20",
+    "@types/lodash.groupby": "4.6.9",
+    "@types/markdown-it": "14.1.2",
+    "@types/node": "22.9.3",
+    "@typescript-eslint/eslint-plugin": "8.16.0",
+    "@typescript-eslint/parser": "8.16.0",
+    "eslint": "9.15.0",
+    "eslint-plugin-vue": "9.31.0",
+    "feed": "4.2.2",
+    "lint-staged": "15.2.10",
+    "markdownlint": "0.36.1",
+    "markdownlint-cli": "0.43.0",
+    "sentences-per-line": "0.2.1",
+    "stylelint": "16.10.0",
+    "stylelint-stylus": "1.0.0",
+    "stylus": "0.64.0",
+    "unplugin-element-plus": "0.8.0",
+    "vite-plugin-eslint": "1.8.1",
+    "vitepress": "1.5.0",
+    "vitepress-plugin-tabs": "0.5.0",
+    "vue": "3.5.13",
+    "vue-eslint-parser": "9.4.3",
+    "x-satori": "0.2.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{styl,vue}": "stylelint --fix",
+    "*.{html,json}": "prettier --write"
+  }
+}
