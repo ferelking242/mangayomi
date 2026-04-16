@@ -1668,7 +1668,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manga_extensions_repo => 'Manga extensions repo';
 
   @override
-  String get anime_extensions_repo => 'Anime extensions repo';
+  String get anime_extensions_repo => 'Watch extensions repo';
 
   @override
   String get novel_extensions_repo => 'Novel extensions repo';
@@ -1702,7 +1702,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manage_manga_repo_urls => 'Manage Manga Repo URLs';
 
   @override
-  String get manage_anime_repo_urls => 'Manage Anime Repo URLs';
+  String get manage_anime_repo_urls => 'Manage Watch Repo URLs';
 
   @override
   String get manage_novel_repo_urls => 'Manage Novel Repo URLs';

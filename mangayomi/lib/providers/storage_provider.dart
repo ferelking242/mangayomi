@@ -253,22 +253,10 @@ class StorageProvider {
       name: "watchtowerDb",
       inspector: inspector,
     );
-    final defaultMangaRepo = Repo(
-      jsonUrl:
-          'https://raw.githubusercontent.com/keiyoushi/extensions/refs/heads/repo/index.min.json',
-    );
-    final defaultAnimeRepo = Repo(
-      jsonUrl:
-          'https://raw.githubusercontent.com/aniyomiorg/aniyomi-extensions/repo/index.min.json',
-    );
     final watchtowerExtensionsRepo = Repo(
       jsonUrl:
           'https://raw.githubusercontent.com/ferelking242/watchtower-extensions/main/index.min.json',
       name: 'Watchtower Extensions',
-    );
-    final defaultNovelRepo = Repo(
-      jsonUrl:
-          'https://raw.githubusercontent.com/LNReader/lnreader-sources/main/multisrc/out/index.min.json',
     );
 
     try {
@@ -277,9 +265,9 @@ class StorageProvider {
         await isar.writeTxn(
           () async => isar.settings.put(
             Settings(
-              mangaExtensionsRepo: [defaultMangaRepo],
-              animeExtensionsRepo: [defaultAnimeRepo, watchtowerExtensionsRepo],
-              novelExtensionsRepo: [defaultNovelRepo],
+              mangaExtensionsRepo: [watchtowerExtensionsRepo],
+              animeExtensionsRepo: [watchtowerExtensionsRepo],
+              novelExtensionsRepo: [watchtowerExtensionsRepo],
             ),
           ),
         );
@@ -287,28 +275,35 @@ class StorageProvider {
         bool needsUpdate = false;
         if (settings.mangaExtensionsRepo == null ||
             settings.mangaExtensionsRepo!.isEmpty) {
-          settings.mangaExtensionsRepo = [defaultMangaRepo];
+          settings.mangaExtensionsRepo = [watchtowerExtensionsRepo];
           needsUpdate = true;
         }
         if (settings.animeExtensionsRepo == null ||
             settings.animeExtensionsRepo!.isEmpty) {
-          settings.animeExtensionsRepo = [defaultAnimeRepo, watchtowerExtensionsRepo];
+          settings.animeExtensionsRepo = [watchtowerExtensionsRepo];
           needsUpdate = true;
-        } else {
-          final hasWatchtower = settings.animeExtensionsRepo!.any(
-            (r) => r.jsonUrl?.contains('ferelking242/watchtower-extensions') == true,
-          );
-          if (!hasWatchtower) {
-            settings.animeExtensionsRepo = [
-              ...settings.animeExtensionsRepo!,
-              watchtowerExtensionsRepo,
-            ];
-            needsUpdate = true;
-          }
         }
         if (settings.novelExtensionsRepo == null ||
             settings.novelExtensionsRepo!.isEmpty) {
-          settings.novelExtensionsRepo = [defaultNovelRepo];
+          settings.novelExtensionsRepo = [watchtowerExtensionsRepo];
+          needsUpdate = true;
+        }
+        // Remove any old 3rd-party repos and replace with watchtower-only
+        final onlyWatchtower =
+            (r) => r.jsonUrl?.contains('ferelking242/watchtower-extensions') == true;
+        final hasExtraManga = settings.mangaExtensionsRepo!.any((r) => !onlyWatchtower(r));
+        final hasExtraAnime = settings.animeExtensionsRepo!.any((r) => !onlyWatchtower(r));
+        final hasExtraNovel = settings.novelExtensionsRepo!.any((r) => !onlyWatchtower(r));
+        if (hasExtraManga) {
+          settings.mangaExtensionsRepo = [watchtowerExtensionsRepo];
+          needsUpdate = true;
+        }
+        if (hasExtraAnime) {
+          settings.animeExtensionsRepo = [watchtowerExtensionsRepo];
+          needsUpdate = true;
+        }
+        if (hasExtraNovel) {
+          settings.novelExtensionsRepo = [watchtowerExtensionsRepo];
           needsUpdate = true;
         }
         if (needsUpdate) {
@@ -326,9 +321,9 @@ class StorageProvider {
             await isar.writeTxn(
               () async => isar.settings.put(
                 Settings(
-                  mangaExtensionsRepo: [defaultMangaRepo],
-                  animeExtensionsRepo: [defaultAnimeRepo],
-                  novelExtensionsRepo: [defaultNovelRepo],
+                  mangaExtensionsRepo: [watchtowerExtensionsRepo],
+                  animeExtensionsRepo: [watchtowerExtensionsRepo],
+                  novelExtensionsRepo: [watchtowerExtensionsRepo],
                 ),
               ),
             );
