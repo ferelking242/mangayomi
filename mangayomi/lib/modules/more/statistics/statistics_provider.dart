@@ -14,6 +14,14 @@ class StatisticsData {
   final int completedItems;
   final int downloadedItems;
   final int totalReadingTimeSeconds;
+  final int ongoingItems;
+  final int onHoldItems;
+  final int droppedItems;
+  final int planToReadItems;
+  final int notStartedItems;
+  final Map<String, int> topGenres;
+  final int totalDownloadedChapters;
+  final int updatedThisWeek;
 
   const StatisticsData({
     required this.totalItems,
@@ -22,6 +30,14 @@ class StatisticsData {
     required this.completedItems,
     required this.downloadedItems,
     required this.totalReadingTimeSeconds,
+    required this.ongoingItems,
+    required this.onHoldItems,
+    required this.droppedItems,
+    required this.planToReadItems,
+    required this.notStartedItems,
+    required this.topGenres,
+    required this.totalDownloadedChapters,
+    required this.updatedThisWeek,
   });
 }
 
@@ -51,20 +67,67 @@ Future<StatisticsData> getStatistics(
       .isDownloadEqualTo(true)
       .count();
 
+  final totalDownloadedChapters = await isar.downloads
+      .filter()
+      .idIsNotNull()
+      .chapter((q) => q.manga((m) => m.itemTypeEqualTo(itemType)))
+      .isDownloadEqualTo(true)
+      .count();
+
   final totalItems = items.length;
   final totalChapters = chapters.length;
   final readChapters = chapters.where((c) => c.isRead ?? false).length;
 
   int completedItems = 0;
+  int ongoingItems = 0;
+  int onHoldItems = 0;
+  int droppedItems = 0;
+  int planToReadItems = 0;
+
+  final genreCount = <String, int>{};
+  final oneWeekAgo = DateTime.now()
+      .subtract(const Duration(days: 7))
+      .millisecondsSinceEpoch;
+  int updatedThisWeek = 0;
+
   for (var item in items) {
-    if (item.status == Status.completed) {
-      final itemChapters = item.chapters.toList();
-      if (itemChapters.isNotEmpty &&
-          itemChapters.every((element) => element.isRead ?? false)) {
+    switch (item.status) {
+      case Status.completed:
         completedItems++;
+        break;
+      case Status.ongoing:
+        ongoingItems++;
+        break;
+      case Status.onHiatus:
+        onHoldItems++;
+        break;
+      case Status.canceled:
+        droppedItems++;
+        break;
+      default:
+        break;
+    }
+    if ((item.lastUpdate ?? 0) > oneWeekAgo) {
+      updatedThisWeek++;
+    }
+    for (final g in item.genre ?? <String>[]) {
+      if (g.trim().isNotEmpty) {
+        genreCount[g] = (genreCount[g] ?? 0) + 1;
       }
     }
   }
+
+  final sortedGenres = genreCount.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final topGenres = Map<String, int>.fromEntries(sortedGenres.take(8));
+
+  final notStartedItems = items.where((item) {
+    final chapsRead = chapters.where((c) {
+      if (!c.manga.isLoaded) c.manga.loadSync();
+      return c.manga.value?.id == item.id && (c.isRead ?? false);
+    });
+    return chapsRead.isEmpty;
+  }).length;
 
   final histories = await isar.historys
       .filter()
@@ -82,5 +145,13 @@ Future<StatisticsData> getStatistics(
     completedItems: completedItems,
     downloadedItems: downloadedCount,
     totalReadingTimeSeconds: totalReadingTimeSeconds,
+    ongoingItems: ongoingItems,
+    onHoldItems: onHoldItems,
+    droppedItems: droppedItems,
+    planToReadItems: planToReadItems,
+    notStartedItems: notStartedItems,
+    topGenres: topGenres,
+    totalDownloadedChapters: totalDownloadedChapters,
+    updatedThisWeek: updatedThisWeek,
   );
 }

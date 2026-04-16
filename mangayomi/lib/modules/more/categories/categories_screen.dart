@@ -7,6 +7,7 @@ import 'package:watchtower/models/category.dart';
 import 'package:watchtower/models/changed.dart';
 import 'package:watchtower/models/manga.dart';
 import 'package:watchtower/modules/more/categories/providers/isar_providers.dart';
+import 'package:watchtower/modules/more/categories/providers/category_metadata_provider.dart';
 import 'package:watchtower/modules/more/categories/widgets/custom_textfield.dart';
 import 'package:watchtower/modules/more/settings/reader/providers/reader_state_provider.dart';
 import 'package:watchtower/modules/more/settings/sync/providers/sync_providers.dart';
@@ -15,6 +16,42 @@ import 'package:watchtower/providers/l10n_providers.dart';
 import 'package:watchtower/utils/item_type_filters.dart';
 import 'package:watchtower/utils/item_type_localization.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
+
+// ---------------------------------------------------------------------------
+// Icon catalogue for the category icon picker
+// ---------------------------------------------------------------------------
+const _kCategoryIcons = <(String, IconData)>[
+  ('label', Icons.label_outline_rounded),
+  ('bookmark', Icons.bookmark_border),
+  ('star', Icons.star_border),
+  ('heart', Icons.favorite_border),
+  ('play', Icons.play_circle_outline),
+  ('movie', Icons.movie_outlined),
+  ('tv', Icons.tv_outlined),
+  ('book', Icons.menu_book_outlined),
+  ('manga', Icons.auto_stories_outlined),
+  ('folder', Icons.folder_outlined),
+  ('history', Icons.history_outlined),
+  ('trophy', Icons.emoji_events_outlined),
+  ('fire', Icons.local_fire_department_outlined),
+  ('lightning', Icons.bolt_outlined),
+  ('music', Icons.music_note_outlined),
+  ('game', Icons.sports_esports_outlined),
+];
+
+// ---------------------------------------------------------------------------
+// Gradient palette for category banners (cycles by index)
+// ---------------------------------------------------------------------------
+const _kBannerGradients = <List<Color>>[
+  [Color(0xFF7C3AED), Color(0xFF5B21B6)],
+  [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+  [Color(0xFF0891B2), Color(0xFF0E7490)],
+  [Color(0xFF059669), Color(0xFF047857)],
+  [Color(0xFFD97706), Color(0xFFB45309)],
+  [Color(0xFFDC2626), Color(0xFFB91C1C)],
+  [Color(0xFFDB2777), Color(0xFFBE185D)],
+  [Color(0xFF7C3AED), Color(0xFF4338CA)],
+];
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   final (bool, int) data;
@@ -233,90 +270,7 @@ class _CategoriesTabState extends ConsumerState<CategoriesTab>
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          bool isExist = false;
-          final controller = TextEditingController();
-          showDialog(
-            context: context,
-            builder: (context) {
-              return SizedBox(
-                child: StatefulBuilder(
-                  builder: (context, setState) {
-                    return AlertDialog(
-                      title: Text(l10n.add_category),
-                      content: CustomTextFormField(
-                        controller: controller,
-                        entries: _entries,
-                        context: context,
-                        exist: (value) {
-                          setState(() {
-                            isExist = value;
-                          });
-                        },
-                        isExist: isExist,
-                        val: (val) {},
-                      ),
-                      actions: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: Text(l10n.cancel),
-                            ),
-                            const SizedBox(width: 15),
-                            TextButton(
-                              onPressed: controller.text.isEmpty || isExist
-                                  ? null
-                                  : () async {
-                                      final category = Category(
-                                        forItemType: widget.itemType,
-                                        name: controller.text,
-                                        updatedAt: DateTime.now()
-                                            .millisecondsSinceEpoch,
-                                      );
-                                      isar.writeTxnSync(() {
-                                        isar.categorys.putSync(
-                                          category..pos = category.id,
-                                        );
-                                        final categories = isar.categorys
-                                            .filter()
-                                            .posIsNull()
-                                            .findAllSync();
-                                        for (var category in categories) {
-                                          isar.categorys.putSync(
-                                            category..pos = category.id,
-                                          );
-                                        }
-                                      });
-
-                                      if (context.mounted) {
-                                        Navigator.pop(context);
-                                      }
-                                    },
-                              child: Text(
-                                l10n.add,
-                                style: TextStyle(
-                                  color: controller.text.isEmpty || isExist
-                                      ? Theme.of(
-                                          context,
-                                        ).primaryColor.withValues(alpha: 0.2)
-                                      : null,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
+        onPressed: () => _showAddCategoryDialog(context, l10n),
         label: Row(
           children: [
             const Icon(Icons.add),
@@ -328,160 +282,438 @@ class _CategoriesTabState extends ConsumerState<CategoriesTab>
     );
   }
 
+  // -------------------------------------------------------------------------
+  // ADD CATEGORY DIALOG (name + icon picker + description)
+  // -------------------------------------------------------------------------
+  void _showAddCategoryDialog(BuildContext context, dynamic l10n) {
+    bool isExist = false;
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    int? selectedIconIndex;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            final selectedIcon = selectedIconIndex != null
+                ? _kCategoryIcons[selectedIconIndex!].$2
+                : Icons.label_outline_rounded;
+            final gradients = _kBannerGradients[
+              (_entries.length) % _kBannerGradients.length
+            ];
+
+            return AlertDialog(
+              contentPadding: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── gradient banner preview ──────────────────────────
+                  GestureDetector(
+                    onTap: () => _showIconPickerSheet(ctx, (idx) {
+                      setDlgState(() => selectedIconIndex = idx);
+                    }),
+                    child: Container(
+                      height: 90,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradients,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(selectedIcon, size: 36, color: Colors.white),
+                          const SizedBox(width: 12),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nameController.text.isEmpty
+                                    ? 'Category Name'
+                                    : nameController.text,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              if (descController.text.isNotEmpty)
+                                Text(
+                                  descController.text,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.edit_outlined,
+                            color: Colors.white.withOpacity(0.6),
+                            size: 14,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // ── fields ────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomTextFormField(
+                          controller: nameController,
+                          entries: _entries,
+                          context: ctx,
+                          exist: (v) => setDlgState(() => isExist = v),
+                          isExist: isExist,
+                          val: (_) => setDlgState(() {}),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: descController,
+                          maxLines: 2,
+                          onChanged: (_) => setDlgState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Description (optional)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            isDense: true,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: nameController.text.isEmpty || isExist
+                      ? null
+                      : () async {
+                          final category = Category(
+                            forItemType: widget.itemType,
+                            name: nameController.text,
+                            updatedAt: DateTime.now().millisecondsSinceEpoch,
+                          );
+                          isar.writeTxnSync(() {
+                            isar.categorys.putSync(
+                              category..pos = category.id,
+                            );
+                            final nullPosCats = isar.categorys
+                                .filter()
+                                .posIsNull()
+                                .findAllSync();
+                            for (var c in nullPosCats) {
+                              isar.categorys.putSync(c..pos = c.id);
+                            }
+                          });
+                          // Persist icon + description metadata
+                          if (selectedIconIndex != null ||
+                              descController.text.isNotEmpty) {
+                            await ref
+                                .read(categoryMetadataProvider.notifier)
+                                .set(
+                                  category.id!,
+                                  CategoryMeta(
+                                    iconCodePoint: selectedIconIndex != null
+                                        ? _kCategoryIcons[selectedIconIndex!]
+                                              .$2
+                                              .codePoint
+                                        : null,
+                                    description: descController.text.isEmpty
+                                        ? null
+                                        : descController.text,
+                                  ),
+                                );
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        },
+                  child: Text(
+                    l10n.add,
+                    style: TextStyle(
+                      color: nameController.text.isEmpty || isExist
+                          ? Theme.of(ctx).primaryColor.withValues(alpha: 0.2)
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showIconPickerSheet(
+    BuildContext context,
+    void Function(int index) onSelected,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choose an icon',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 8,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: _kCategoryIcons.asMap().entries.map((e) {
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      onSelected(e.key);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          ctx,
+                        ).colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        e.value.$2,
+                        size: 22,
+                        color: Theme.of(ctx).colorScheme.primary,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // CATEGORY CARD  (gradient banner + icon + description)
+  // -------------------------------------------------------------------------
   Widget _buildCategoryCard(
     BuildContext context,
     Category category,
     int index,
   ) {
     final l10n = l10nLocalizations(context)!;
+    final meta = ref.watch(categoryMetadataProvider)[category.id];
+    final gradients = _kBannerGradients[index % _kBannerGradients.length];
+
+    IconData cardIcon = Icons.label_outline_rounded;
+    if (meta?.iconCodePoint != null) {
+      // Resolve stored code point back to an IconData
+      final match = _kCategoryIcons.where(
+        (e) => e.$2.codePoint == meta!.iconCodePoint,
+      );
+      if (match.isNotEmpty) cardIcon = match.first.$2;
+    }
+
     return Padding(
       key: Key('category_${category.id}'),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       child: Card(
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
         child: Column(
           children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                shadowColor: Colors.transparent,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(0),
-                    bottomRight: Radius.circular(0),
-                    topRight: Radius.circular(10),
-                    topLeft: Radius.circular(10),
+            // ── gradient banner header ─────────────────────────────────
+            GestureDetector(
+              onTap: () => _renameCategory(category),
+              child: Container(
+                width: double.infinity,
+                height: 70,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradients,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-              ),
-              onPressed: () {
-                _renameCategory(category);
-              },
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Icon(Icons.label_outline_rounded),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(category.name!)),
-                ],
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(cardIcon, color: Colors.white, size: 26),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          if (meta?.description != null &&
+                              meta!.description!.isNotEmpty)
+                            Text(
+                              meta.description!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.78),
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.edit_outlined,
+                      color: Colors.white.withOpacity(0.6),
+                      size: 16,
+                    ),
+                  ],
+                ),
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 10),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_drop_up_outlined),
-                          onPressed: index > 0
-                              ? () {
-                                  _moveCategory(index, index - 1);
-                                }
-                              : null,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_drop_down_outlined),
-                          onPressed: index < _entries.length - 1
-                              ? () {
-                                  _moveCategory(index, index + 1);
-                                }
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        _renameCategory(category);
-                      },
-                      icon: const Icon(Icons.mode_edit_outline_outlined),
-                    ),
-                    SizedBox(width: 10),
-                    IconButton(
-                      onPressed: () async {
-                        await isar.writeTxn(() async {
-                          category.shouldUpdate =
-                              !(category.shouldUpdate ?? true);
-                          category.updatedAt =
-                              DateTime.now().millisecondsSinceEpoch;
-                          isar.categorys.put(category);
-                        });
-                      },
-                      icon: Icon(
-                        category.shouldUpdate ?? true
-                            ? Icons.update_outlined
-                            : Icons.update_disabled_outlined,
+            // ── action bar ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // reorder buttons
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_drop_up_outlined),
+                        onPressed: index > 0
+                            ? () => _moveCategory(index, index - 1)
+                            : null,
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    IconButton(
-                      onPressed: () async {
-                        await isar.writeTxn(() async {
-                          category.hide = !(category.hide ?? false);
-                          category.updatedAt =
-                              DateTime.now().millisecondsSinceEpoch;
-                          isar.categorys.put(category);
-                        });
-                      },
-                      icon: Icon(
-                        !(category.hide ?? false)
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                      IconButton(
+                        icon: const Icon(Icons.arrow_drop_down_outlined),
+                        onPressed: index < _entries.length - 1
+                            ? () => _moveCategory(index, index + 1)
+                            : null,
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    IconButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return StatefulBuilder(
-                              builder: (context, setState) {
-                                return AlertDialog(
-                                  title: Text(l10n.delete_category),
-                                  content: Text(
-                                    l10n.delete_category_msg(category.name!),
-                                  ),
-                                  actions: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text(l10n.cancel),
-                                        ),
-                                        const SizedBox(width: 15),
-                                        TextButton(
-                                          onPressed: () async {
-                                            await _removeCategory(
-                                              category,
-                                              context,
-                                            );
-                                          },
-                                          child: Text(l10n.ok),
-                                        ),
-                                      ],
+                    ],
+                  ),
+                  // action buttons
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => _renameCategory(category),
+                        icon: const Icon(Icons.mode_edit_outline_outlined),
+                        tooltip: l10n.rename_category,
+                      ),
+                      IconButton(
+                        onPressed: () async {
+                          await isar.writeTxn(() async {
+                            category.shouldUpdate =
+                                !(category.shouldUpdate ?? true);
+                            category.updatedAt =
+                                DateTime.now().millisecondsSinceEpoch;
+                            isar.categorys.put(category);
+                          });
+                        },
+                        icon: Icon(
+                          category.shouldUpdate ?? true
+                              ? Icons.update_outlined
+                              : Icons.update_disabled_outlined,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () async {
+                          await isar.writeTxn(() async {
+                            category.hide = !(category.hide ?? false);
+                            category.updatedAt =
+                                DateTime.now().millisecondsSinceEpoch;
+                            isar.categorys.put(category);
+                          });
+                        },
+                        icon: Icon(
+                          !(category.hide ?? false)
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return StatefulBuilder(
+                                builder: (context, setState) {
+                                  return AlertDialog(
+                                    title: Text(l10n.delete_category),
+                                    content: Text(
+                                      l10n.delete_category_msg(category.name!),
                                     ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-                      icon: const Icon(Icons.delete_outlined),
-                    ),
-                  ],
-                ),
-              ],
+                                    actions: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: Text(l10n.cancel),
+                                          ),
+                                          const SizedBox(width: 15),
+                                          TextButton(
+                                            onPressed: () async {
+                                              await _removeCategory(
+                                                category,
+                                                context,
+                                              );
+                                            },
+                                            child: Text(l10n.ok),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                        icon: const Icon(Icons.delete_outlined),
+                        tooltip: l10n.delete_category,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),

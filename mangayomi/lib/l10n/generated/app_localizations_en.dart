@@ -478,7 +478,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only show downloaded entries in your library';
 
   @override
-  String get download_queue => 'Download Queue';
+  String get download_queue => 'Download Manager';
 
   @override
   String get categories => 'Categories';
@@ -1053,7 +1053,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manga_sources => 'Manga Sources';
 
   @override
-  String get anime_sources => 'Anime Sources';
+  String get anime_sources => 'Watch Sources';
 
   @override
   String get novel_sources => 'Novel Sources';

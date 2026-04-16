@@ -7,7 +7,7 @@ extension ItemTypeLocalization on ItemType {
       case ItemType.manga:
         return l10n.manga;
       case ItemType.anime:
-        return l10n.anime;
+        return l10n.watch;
       case ItemType.novel:
         return l10n.novel;
     }

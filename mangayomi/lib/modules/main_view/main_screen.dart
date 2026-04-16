@@ -340,7 +340,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         icon: const Icon(Icons.video_collection_outlined),
         label: Padding(
           padding: const EdgeInsets.only(top: 5),
-          child: Text(l10n.anime),
+          child: Text(l10n.watch),
         ),
       );
     }
@@ -469,7 +469,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       destinations[dest.indexOf("/AnimeLibrary")] = NavigationDestination(
         selectedIcon: const Icon(Icons.video_collection),
         icon: const Icon(Icons.video_collection_outlined),
-        label: l10n.anime,
+        label: l10n.watch,
       );
     }
     if (dest.contains("/NovelLibrary")) {

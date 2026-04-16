@@ -46,13 +46,6 @@ class AboutScreen extends ConsumerWidget {
                   expandedHeight: 200,
                   pinned: true,
                   flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      l10n!.about,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
                     background: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
