@@ -11,8 +11,11 @@ on:
         required: false
         default: 'nightly'
 
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name }}
+  group: ${{ github.workflow }}-${{ env.RELEASE_TAG }}
   cancel-in-progress: true
 
 env:
@@ -80,21 +83,21 @@ jobs:
           if [ "$SIGNING_CONFIGURED" = "true" ]; then
             flutter build apk --release --split-per-abi --verbose
             cd build/app/outputs/flutter-apk
-            mv app-arm64-v8a-release.apk Watchtower-${{ github.ref_name }}-android-arm64-v8a.apk
-            mv app-armeabi-v7a-release.apk Watchtower-${{ github.ref_name }}-android-armeabi-v7a.apk
-            mv app-x86_64-release.apk Watchtower-${{ github.ref_name }}-android-x86_64.apk
+            mv app-arm64-v8a-release.apk Watchtower-${{ env.RELEASE_TAG }}-android-arm64-v8a.apk
+            mv app-armeabi-v7a-release.apk Watchtower-${{ env.RELEASE_TAG }}-android-armeabi-v7a.apk
+            mv app-x86_64-release.apk Watchtower-${{ env.RELEASE_TAG }}-android-x86_64.apk
           else
             flutter build apk --debug --split-per-abi --verbose
             cd build/app/outputs/flutter-apk
-            mv app-arm64-v8a-debug.apk Watchtower-${{ github.ref_name }}-android-arm64-v8a.apk
-            mv app-armeabi-v7a-debug.apk Watchtower-${{ github.ref_name }}-android-armeabi-v7a.apk
-            mv app-x86_64-debug.apk Watchtower-${{ github.ref_name }}-android-x86_64.apk
+            mv app-arm64-v8a-debug.apk Watchtower-${{ env.RELEASE_TAG }}-android-arm64-v8a.apk
+            mv app-armeabi-v7a-debug.apk Watchtower-${{ env.RELEASE_TAG }}-android-armeabi-v7a.apk
+            mv app-x86_64-debug.apk Watchtower-${{ env.RELEASE_TAG }}-android-x86_64.apk
           fi
 
       - name: upload artifact android apks
         uses: actions/upload-artifact@v4
         with:
-          name: Watchtower-${{ github.ref_name }}-android
+          name: Watchtower-${{ env.RELEASE_TAG }}-android
           path: "build/app/outputs/flutter-apk/Watchtower-*.apk"
 
       - name: release packages android apks
@@ -102,6 +105,9 @@ jobs:
         with:
           artifacts: "build/app/outputs/flutter-apk/Watchtower-*.apk"
           allowUpdates: true
+          tag: ${{ env.RELEASE_TAG }}
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
 
   build-and-release-ios-ipa:
     permissions:
@@ -160,12 +166,12 @@ jobs:
           mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
           ./zsign -f -k ./certificate.p12 -p "$P12_PASSWORD" -m ./profile.mobileprovision ./build/ios/iphoneos/Payload/Runner.app
           cd build/ios/iphoneos
-          zip -r Mangayomi-${{ github.ref_name }}-ios.ipa Payload
+          zip -r Mangayomi-${{ env.RELEASE_TAG }}-ios.ipa Payload
 
       - name: Upload artifact iOS IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-ios
+          name: Mangayomi-${{ env.RELEASE_TAG }}-ios
           path: "build/ios/iphoneos/Mangayomi-*.ipa"
 
       - name: Release package iOS IPA
@@ -203,12 +209,12 @@ jobs:
           cd ..
           flutter build macos --release --verbose
           brew install create-dmg
-          create-dmg --volname Mangayomi-${{ github.ref_name }}-macos --window-pos 200 120 --window-size 800 450 --icon-size 100 --app-drop-link 600 185 Mangayomi-${{ github.ref_name }}-macos.dmg build/macos/Build/Products/Release/Mangayomi.app
+          create-dmg --volname Mangayomi-${{ env.RELEASE_TAG }}-macos --window-pos 200 120 --window-size 800 450 --icon-size 100 --app-drop-link 600 185 Mangayomi-${{ env.RELEASE_TAG }}-macos.dmg build/macos/Build/Products/Release/Mangayomi.app
 
       - name: upload artifact macos dmg
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-macos
+          name: Mangayomi-${{ env.RELEASE_TAG }}-macos
           path: "/Users/runner/work/mangayomi/mangayomi/*.dmg"
 
       - name: release package macos dmg
@@ -250,7 +256,7 @@ jobs:
         run: |
           # Rename the installer .exe
           $installer = Get-ChildItem "build/windows/x64/installer/Release/*-Installer.exe"
-          Rename-Item -Path $installer.FullName -NewName "Mangayomi-${{ github.ref_name }}-windows.exe"
+          Rename-Item -Path $installer.FullName -NewName "Mangayomi-${{ env.RELEASE_TAG }}-windows.exe"
 
           # Go to runner output dir
           Set-Location -Path "build/windows/x64/runner/Release"
@@ -259,12 +265,12 @@ jobs:
           Compress-Archive -Path * -DestinationPath "Mangayomi-Windows.zip"
 
           # Rename zip
-          Rename-Item -Path "Mangayomi-Windows.zip" -NewName "Mangayomi-${{ github.ref_name }}-windows.zip"
+          Rename-Item -Path "Mangayomi-Windows.zip" -NewName "Mangayomi-${{ env.RELEASE_TAG }}-windows.zip"
 
       - name: upload artifact windows exe_zip
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-windows-zip
+          name: Mangayomi-${{ env.RELEASE_TAG }}-windows-zip
           path: |
             build/windows/x64/installer/Release/Mangayomi-*.exe
             build/windows/x64/runner/Release/Mangayomi-*.zip
@@ -313,7 +319,7 @@ jobs:
         uses: thedoctor0/zip-release@main
         with:
           type: "zip"
-          filename: Mangayomi-${{ github.ref_name }}-linux.zip
+          filename: Mangayomi-${{ env.RELEASE_TAG }}-linux.zip
           directory: build/linux/x64/release/bundle
 
       - name: Create AppImage
@@ -358,7 +364,7 @@ jobs:
             --executable AppDir/usr/bin/mangayomi \
             $EXCLUDE_ARGS \
             --output appimage
-          mv $(find . -type f -name "*.AppImage") build/linux/x64/release/Mangayomi-${{ github.ref_name }}-linux.AppImage
+          mv $(find . -type f -name "*.AppImage") build/linux/x64/release/Mangayomi-${{ env.RELEASE_TAG }}-linux.AppImage
 
       - name: Create RPM Package
         run: |
@@ -405,12 +411,12 @@ jobs:
           EOF
 
           rpmbuild --define "_topdir $(pwd)/rpm_build" -ba rpm_build/SPECS/mangayomi.spec
-          mv rpm_build/RPMS/x86_64/*.rpm build/linux/x64/release/Mangayomi-${{ github.ref_name }}-linux.rpm
+          mv rpm_build/RPMS/x86_64/*.rpm build/linux/x64/release/Mangayomi-${{ env.RELEASE_TAG }}-linux.rpm
 
       - name: upload artifact linux zip
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-linux-zip
+          name: Mangayomi-${{ env.RELEASE_TAG }}-linux-zip
           path: |
             build/linux/x64/release/Mangayomi-*.zip
             build/linux/x64/release/Mangayomi-*.AppImage
@@ -471,12 +477,12 @@ jobs:
           # Set correct permissions
           chmod 644 extracted_deb/usr/share/applications/mangayomi.desktop
           # Repack the .deb
-          fakeroot dpkg-deb -b extracted_deb dist/Mangayomi-${{ github.ref_name }}-linux.deb
+          fakeroot dpkg-deb -b extracted_deb dist/Mangayomi-${{ env.RELEASE_TAG }}-linux.deb
 
       - name: upload artifact linux deb
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-linux-deb
+          name: Mangayomi-${{ env.RELEASE_TAG }}-linux-deb
           path: dist/Mangayomi-*.deb
 
       - name: Release package deb
