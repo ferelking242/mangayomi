@@ -62,8 +62,14 @@ jobs:
 
       - name: Setup Android keystore
         run: |
-          echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 -di > android/app/upload-keystore.jks
-          echo "${{ secrets.SIGNING_KEY_PROPERTIES }}" > android/key.properties
+          if [ -n "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" ]; then
+            echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 -di > android/app/upload-keystore.jks
+            echo "${{ secrets.SIGNING_KEY_PROPERTIES }}" > android/key.properties
+            echo "SIGNING_CONFIGURED=true" >> $GITHUB_ENV
+          else
+            echo "No signing key - building debug APK"
+            echo "SIGNING_CONFIGURED=false" >> $GITHUB_ENV
+          fi
 
       - name: flutter pub get
         run: flutter pub get
@@ -71,22 +77,30 @@ jobs:
       - name: build android apks (split per ABI)
         run: |
           export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
-          flutter build apk --release --split-per-abi --verbose
-          cd build/app/outputs/flutter-apk
-          mv app-arm64-v8a-release.apk Mangayomi-${{ github.ref_name }}-android-arm64-v8a.apk
-          mv app-armeabi-v7a-release.apk Mangayomi-${{ github.ref_name }}-android-armeabi-v7a.apk
-          mv app-x86_64-release.apk Mangayomi-${{ github.ref_name }}-android-x86_64.apk
+          if [ "$SIGNING_CONFIGURED" = "true" ]; then
+            flutter build apk --release --split-per-abi --verbose
+            cd build/app/outputs/flutter-apk
+            mv app-arm64-v8a-release.apk Watchtower-${{ github.ref_name }}-android-arm64-v8a.apk
+            mv app-armeabi-v7a-release.apk Watchtower-${{ github.ref_name }}-android-armeabi-v7a.apk
+            mv app-x86_64-release.apk Watchtower-${{ github.ref_name }}-android-x86_64.apk
+          else
+            flutter build apk --debug --split-per-abi --verbose
+            cd build/app/outputs/flutter-apk
+            mv app-arm64-v8a-debug.apk Watchtower-${{ github.ref_name }}-android-arm64-v8a.apk
+            mv app-armeabi-v7a-debug.apk Watchtower-${{ github.ref_name }}-android-armeabi-v7a.apk
+            mv app-x86_64-debug.apk Watchtower-${{ github.ref_name }}-android-x86_64.apk
+          fi
 
       - name: upload artifact android apks
         uses: actions/upload-artifact@v4
         with:
-          name: Mangayomi-${{ github.ref_name }}-android
-          path: "build/app/outputs/flutter-apk/Mangayomi-*.apk"
+          name: Watchtower-${{ github.ref_name }}-android
+          path: "build/app/outputs/flutter-apk/Watchtower-*.apk"
 
       - name: release packages android apks
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/flutter-apk/Mangayomi-*.apk"
+          artifacts: "build/app/outputs/flutter-apk/Watchtower-*.apk"
           allowUpdates: true
 
   build-and-release-ios-ipa:
