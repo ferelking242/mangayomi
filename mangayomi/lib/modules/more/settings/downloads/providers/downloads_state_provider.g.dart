@@ -273,3 +273,223 @@ abstract class _$ConcurrentDownloadsState extends $Notifier<int> {
     element.handleCreate(ref, build);
   }
 }
+
+// ──────────────────────────────────────────────────────────────
+// NEW: DownloadModeState
+// ──────────────────────────────────────────────────────────────
+
+@ProviderFor(DownloadModeState)
+final downloadModeStateProvider = DownloadModeStateProvider._();
+
+final class DownloadModeStateProvider
+    extends $NotifierProvider<DownloadModeState, DownloadMode> {
+  DownloadModeStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'downloadModeStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$downloadModeStateHash();
+
+  @$internal
+  @override
+  DownloadModeState create() => DownloadModeState();
+
+  Override overrideWithValue(DownloadMode value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DownloadMode>(value),
+    );
+  }
+}
+
+String _$downloadModeStateHash() => r'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0';
+
+abstract class _$DownloadModeState extends $Notifier<DownloadMode> {
+  DownloadMode build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<DownloadMode, DownloadMode>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DownloadMode, DownloadMode>,
+              DownloadMode,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// NEW: SwipeLeftActionState
+// ──────────────────────────────────────────────────────────────
+
+@ProviderFor(SwipeLeftActionState)
+final swipeLeftActionStateProvider = SwipeLeftActionStateProvider._();
+
+final class SwipeLeftActionStateProvider
+    extends $NotifierProvider<SwipeLeftActionState, SwipeAction> {
+  SwipeLeftActionStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'swipeLeftActionStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$swipeLeftActionStateHash();
+
+  @$internal
+  @override
+  SwipeLeftActionState create() => SwipeLeftActionState();
+
+  Override overrideWithValue(SwipeAction value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SwipeAction>(value),
+    );
+  }
+}
+
+String _$swipeLeftActionStateHash() => r'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1';
+
+abstract class _$SwipeLeftActionState extends $Notifier<SwipeAction> {
+  SwipeAction build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<SwipeAction, SwipeAction>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SwipeAction, SwipeAction>,
+              SwipeAction,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// NEW: SwipeRightActionState
+// ──────────────────────────────────────────────────────────────
+
+@ProviderFor(SwipeRightActionState)
+final swipeRightActionStateProvider = SwipeRightActionStateProvider._();
+
+final class SwipeRightActionStateProvider
+    extends $NotifierProvider<SwipeRightActionState, SwipeAction> {
+  SwipeRightActionStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'swipeRightActionStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$swipeRightActionStateHash();
+
+  @$internal
+  @override
+  SwipeRightActionState create() => SwipeRightActionState();
+
+  Override overrideWithValue(SwipeAction value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SwipeAction>(value),
+    );
+  }
+}
+
+String _$swipeRightActionStateHash() => r'c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2';
+
+abstract class _$SwipeRightActionState extends $Notifier<SwipeAction> {
+  SwipeAction build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<SwipeAction, SwipeAction>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SwipeAction, SwipeAction>,
+              SwipeAction,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// NEW: DownloadQueueState
+// ──────────────────────────────────────────────────────────────
+
+@ProviderFor(DownloadQueueState)
+final downloadQueueStateProvider = DownloadQueueStateProvider._();
+
+final class DownloadQueueStateProvider
+    extends $NotifierProvider<DownloadQueueState, DownloadQueueStateData> {
+  DownloadQueueStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'downloadQueueStateProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$downloadQueueStateHash();
+
+  @$internal
+  @override
+  DownloadQueueState create() => DownloadQueueState();
+
+  Override overrideWithValue(DownloadQueueStateData value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DownloadQueueStateData>(value),
+    );
+  }
+}
+
+String _$downloadQueueStateHash() => r'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3';
+
+abstract class _$DownloadQueueState extends $Notifier<DownloadQueueStateData> {
+  DownloadQueueStateData build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<DownloadQueueStateData, DownloadQueueStateData>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DownloadQueueStateData, DownloadQueueStateData>,
+              DownloadQueueStateData,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

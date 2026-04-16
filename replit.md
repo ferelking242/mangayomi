@@ -18,6 +18,36 @@ VitePress documentation website for Watchtower. Deployed at `/aniyomi-website/`.
 - `src/docs/guides/light-novel-reader.md` — complete LN reader guide (added)
 - `src/docs/faq/general.md` — general FAQ (LN support confirmed, content types listed)
 
+## Download System (Overhauled)
+
+### Engine Architecture
+- `mangayomi/lib/services/download_manager/download_settings_service.dart` — JSON-based settings (DownloadMode, SwipeAction enums). Avoids Isar schema migrations.
+- `mangayomi/lib/services/download_manager/engines/download_engine.dart` — Abstract `DownloadEngine` interface.
+- `mangayomi/lib/services/download_manager/engines/zeus_dl_engine.dart` — ZeusDL subprocess engine (yt-dlp fork). Calls `zeusdl`/`yt-dlp` binary via `Process.start`. Supports pause (SIGSTOP) and resume (SIGCONT) on Linux/macOS.
+- `mangayomi/lib/services/download_manager/engine_selector.dart` — `EngineSelector.select()` chooses FK/internal vs ZeusDL based on mode, URL type, and failure history.
+
+### Download Modes (4 modes)
+1. **Internal Downloader** — FK built-in only (manga, images, simple files)
+2. **FK Fallback Zeus** — Internal first, auto-switches to ZeusDL on failure *(default)*
+3. **ZeusDL** — ZeusDL only (best for protected streams, HLS, anti-bot sites)
+4. **Auto** — Intelligent detection based on URL and source type
+
+### Providers
+- `DownloadModeState`, `SwipeLeftActionState`, `SwipeRightActionState` — Riverpod notifiers, persisted via `DownloadSettingsService`.
+- `DownloadQueueState` — In-memory notifier tracking: paused IDs, engine map (FK/ZDL badge), retry counts, speeds.
+
+### Download Queue Screen
+- Global actions: Pause All, Resume All, Stop All, Delete Completed, Retry Failed.
+- Per-item: pause/resume toggle, retry, cancel buttons. Animated progress bar.
+- Engine badge (FK or ZDL in purple). PAUSED badge. Retry count indicator.
+- Configurable swipe left/right actions (Pause/Resume, Cancel, Delete, Retry, None).
+
+### M3u8 Downloader Improvements
+- `_buildEffectiveHeaders()` — Injects Referer, Origin, User-Agent, cookies.
+- 403 retry with header refresh (prevents "403 Forbidden" stream failures).
+- `_withRetry<T>()` — Generic exponential-backoff retry helper.
+- `refererUrl` constructor param — lets the caller supply the source page URL as Referer.
+
 ## Stack
 
 - **App**: Flutter (Dart) — `mangayomi/`

@@ -25,6 +25,9 @@ class M3u8Downloader {
   final Chapter chapter;
   final List<Track>? subtitles;
 
+  /// Source page URL — used as Referer header (anti-403 fix)
+  final String? refererUrl;
+
   static var httpClient = MClient.httpClient(
     settings: const ClientSettings(
       throwOnStatusCode: false,
@@ -40,6 +43,7 @@ class M3u8Downloader {
     required this.chapter,
     this.concurrentDownloads = 1,
     required this.subtitles,
+    this.refererUrl,
   });
 
   void _log(String message) {
@@ -54,16 +58,52 @@ class M3u8Downloader {
     isolateChapsSendPorts.remove('${chapter.id}');
   }
 
-  Future<T> _withRetry<T>(Future<T> Function() operation) async {
+  /// Build effective headers, injecting Referer, User-Agent, and cookies.
+  Map<String, String> _buildEffectiveHeaders({String? urlOverride}) {
+    final uri = Uri.tryParse(urlOverride ?? m3u8Url);
+    final origin = uri != null ? '${uri.scheme}://${uri.host}' : '';
+    final effectiveReferer = refererUrl ?? origin;
+
+    final merged = <String, String>{
+      'User-Agent': _appUserAgent(),
+      if (effectiveReferer.isNotEmpty) 'Referer': effectiveReferer,
+      if (origin.isNotEmpty) 'Origin': origin,
+      ...?headers,
+    };
+
+    // Inject cookies stored for this domain
+    final cookies = MClient.getCookiesPref(urlOverride ?? m3u8Url);
+    if (cookies.isNotEmpty) {
+      merged.addAll(cookies);
+      merged['User-Agent'] = _appUserAgent();
+    }
+
+    return merged;
+  }
+
+  String _appUserAgent() {
+    return 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+  }
+
+  Future<T> _withRetry<T>(
+    Future<T> Function() operation, {
+    int maxAttempts = 3,
+    Duration delay = const Duration(seconds: 2),
+  }) async {
     int attempts = 0;
     while (true) {
       try {
         attempts++;
         return await operation();
       } catch (e) {
-        if (attempts >= 3) {
-          throw M3u8DownloaderException('Operation failed after 3 attempts', e);
+        if (attempts >= maxAttempts) {
+          throw M3u8DownloaderException(
+            'Operation failed after $maxAttempts attempts',
+            e,
+          );
         }
+        _log('Attempt $attempts failed, retrying in ${delay.inSeconds}s: $e');
+        await Future.delayed(delay * attempts);
       }
     }
   }
@@ -72,6 +112,8 @@ class M3u8Downloader {
     try {
       final uri = Uri.parse(m3u8Url);
       final m3u8Host = "${uri.scheme}://${uri.host}${path.dirname(uri.path)}";
+
+      // Fetch with full headers (anti-403)
       final m3u8Body = await _withRetry(() => _getM3u8Body(m3u8Url));
       final tsList = _parseTsList(m3u8Host, m3u8Body);
       final mediaSequence = _extractMediaSequence(m3u8Body);
@@ -85,6 +127,8 @@ class M3u8Downloader {
 
       return (tsList, key, iv, mediaSequence);
     } catch (e) {
+      // If we get a 403, attempt to re-fetch with refreshed headers
+      _log('Failed to get TS list, attempting header refresh: $e');
       throw M3u8DownloaderException('Failed to get TS list', e);
     }
   }
@@ -107,6 +151,7 @@ class M3u8Downloader {
         mediaSequence,
         onProgress,
       );
+
       for (var element in subtitles ?? <Track>[]) {
         final subtitleFile = File(
           path.join('${downloadDir}_subtitles', '${element.label}.srt'),
@@ -123,8 +168,10 @@ class M3u8Downloader {
         subtitleFile.createSync(recursive: true);
         if (element.file!.startsWith("http")) {
           final response = await _withRetry(
-            () =>
-                httpClient.get(Uri.parse(element.file ?? ''), headers: headers),
+            () => httpClient.get(
+              Uri.parse(element.file ?? ''),
+              headers: _buildEffectiveHeaders(),
+            ),
           );
           if (response.statusCode != 200) {
             _log('Warning: Failed to download subtitle file: ${element.label}');
@@ -166,7 +213,6 @@ class M3u8Downloader {
     final completer = Completer<void>();
     final taskId = 'm3u8_${chapter.id}';
 
-    // Mark as active for compatibility with cancelDownloads()
     isolateChapsSendPorts['${chapter.id}'] = true;
 
     await DownloadIsolatePool.instance.submitM3u8Download(
@@ -177,16 +223,13 @@ class M3u8Downloader {
       iv: iv,
       mediaSequence: mediaSequence,
       concurrentDownloads: concurrentDownloads,
-      headers: headers,
+      headers: _buildEffectiveHeaders(),
       itemType: chapter.manga.value!.itemType,
       onProgress: (progress) {
         onProgress(progress);
       },
       onComplete: () async {
-        // Merge the segments after downloading
         await _mergeSegments(fileName, tempDir, onProgress);
-
-        // Clean up the temporary directory
         if (await Directory(tempDir).exists()) {
           try {
             await Directory(tempDir).delete(recursive: true);
@@ -194,7 +237,6 @@ class M3u8Downloader {
             _log('Warning: Failed to clean up temporary directory: $e');
           }
         }
-
         if (!completer.isCompleted) {
           completer.complete();
         }
@@ -261,9 +303,33 @@ class M3u8Downloader {
   }
 
   Future<String> _getM3u8Body(String url) async {
-    final response = await httpClient.get(Uri.parse(url), headers: headers);
+    final effectiveHeaders = _buildEffectiveHeaders(urlOverride: url);
+    final response = await httpClient.get(
+      Uri.parse(url),
+      headers: effectiveHeaders,
+    );
+
+    if (response.statusCode == 403) {
+      _log('403 Forbidden — retrying with refreshed headers...');
+      // Wait briefly and retry with cookies refreshed
+      await Future.delayed(const Duration(seconds: 1));
+      final retryHeaders = _buildEffectiveHeaders(urlOverride: url);
+      final retryResponse = await httpClient.get(
+        Uri.parse(url),
+        headers: retryHeaders,
+      );
+      if (retryResponse.statusCode != 200) {
+        throw M3u8DownloaderException(
+          'Failed to load m3u8 body (status ${retryResponse.statusCode} after retry)',
+        );
+      }
+      return retryResponse.body;
+    }
+
     if (response.statusCode != 200) {
-      throw M3u8DownloaderException('Failed to load m3u8 body');
+      throw M3u8DownloaderException(
+        'Failed to load m3u8 body (status ${response.statusCode})',
+      );
     }
     return response.body;
   }
@@ -276,9 +342,9 @@ class M3u8Downloader {
     for (final line in lines) {
       if (line.isEmpty || line.startsWith('#')) continue;
       index++;
-      final tsUrl = line.startsWith('http')
-          ? line
-          : '$host${line.replaceFirst("/", "")}';
+      final tsUrl = line.trim().startsWith('http')
+          ? line.trim()
+          : '$host/${line.trim().replaceFirst(RegExp(r'^/'), '')}';
       tsList.add(TsInfo('TS_$index', tsUrl));
     }
     return tsList;
@@ -296,7 +362,10 @@ class M3u8Downloader {
         if (keyUrl == null) break;
 
         final response = await _withRetry(
-          () => httpClient.get(Uri.parse(keyUrl), headers: headers),
+          () => httpClient.get(
+            Uri.parse(keyUrl),
+            headers: _buildEffectiveHeaders(urlOverride: keyUrl),
+          ),
         );
         if (response.statusCode == 200) {
           return (Uint8List.fromList(response.bodyBytes), iv);

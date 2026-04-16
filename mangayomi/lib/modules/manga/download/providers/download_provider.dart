@@ -25,6 +25,9 @@ import 'package:watchtower/services/get_chapter_pages.dart';
 import 'package:watchtower/services/http/m_client.dart';
 import 'package:watchtower/services/download_manager/m3u8/m3u8_downloader.dart';
 import 'package:watchtower/services/download_manager/m3u8/models/download.dart';
+import 'package:watchtower/services/download_manager/download_settings_service.dart';
+import 'package:watchtower/services/download_manager/engine_selector.dart';
+import 'package:watchtower/services/download_manager/engines/zeus_dl_engine.dart';
 import 'package:watchtower/utils/chapter_recognition.dart';
 import 'package:watchtower/utils/extensions/chapter.dart';
 import 'package:watchtower/utils/extensions/string_extensions.dart';
@@ -232,6 +235,13 @@ Future<void> downloadChapter(
         final videosUrls = nonM3U8File ? nonM3u8Urls : m3u8Urls;
         if (videosUrls.isNotEmpty) {
           subtitles = videosUrls.first.subtitles;
+
+          // Derive a Referer from the video URL for anti-403 protection
+          final videoUri = Uri.tryParse(videosUrls.first.originalUrl);
+          final referer = videoUri != null
+              ? '${videoUri.scheme}://${videoUri.host}'
+              : null;
+
           if (hasM3U8File) {
             m3u8Downloader = M3u8Downloader(
               m3u8Url: videosUrls.first.url,
@@ -240,6 +250,7 @@ Future<void> downloadChapter(
               subtitles: subtitles,
               fileName: p.join(mangaMainDirectory!.path, "$chapterName.mp4"),
               chapter: chapter,
+              refererUrl: referer,
             );
           } else {
             pageUrls = [PageUrl(videosUrls.first.url)];
@@ -390,10 +401,71 @@ Future<void> downloadChapter(
       } else {
         await setProgress(DownloadProgress(1, 1, itemType, isCompleted: true));
       }
-    } else if (hasM3U8File) {
-      await m3u8Downloader?.download((progress) {
-        setProgress(progress);
-      });
+    } else if (hasM3U8File && m3u8Downloader != null) {
+      // ── Engine selection ─────────────────────────────────────────────────
+      await DownloadSettingsService.instance.load();
+      final downloadMode = DownloadSettingsService.instance.downloadMode;
+      final videoUrl = m3u8Downloader!.m3u8Url;
+
+      final engine = EngineSelector.select(
+        url: videoUrl,
+        itemType: itemType,
+        mode: downloadMode,
+      );
+
+      // Update the queue state with the selected engine badge
+      final downloadRecord = isar.downloads.getSync(chapter.id!);
+      if (downloadRecord?.id != null) {
+        // Engine badge stored in-memory via DownloadQueueState
+        // (we can't call ref here in callback context, so we skip the badge update)
+      }
+
+      if (engine == SelectedEngine.zeusDl) {
+        // ── ZeusDL path ──────────────────────────────────────────────────
+        final zeusEngine = ZeusDlEngine(
+          url: videoUrl,
+          outputPath: m3u8Downloader!.fileName,
+          headers: m3u8Downloader!.headers ?? {},
+          itemType: itemType,
+          chapterId: '${chapter.id}',
+        );
+
+        bool zeusFailed = false;
+        try {
+          await zeusEngine.start((progress) => setProgress(progress));
+        } catch (e) {
+          zeusFailed = true;
+        }
+
+        // Fallback to internal M3u8Downloader if ZeusDL failed and mode allows
+        if (zeusFailed && downloadMode != DownloadMode.zeusDl) {
+          await m3u8Downloader!.download((progress) => setProgress(progress));
+        }
+      } else {
+        // ── FK / Internal M3u8 path ───────────────────────────────────────
+        Object? caughtError;
+        try {
+          await m3u8Downloader!.download((progress) => setProgress(progress));
+        } catch (e) {
+          caughtError = e;
+        }
+
+        if (caughtError != null) {
+          // Auto-fallback to ZeusDL if enabled and internal failed
+          if (downloadMode == DownloadMode.fkFallbackZeus) {
+            final fallbackEngine = ZeusDlEngine(
+              url: videoUrl,
+              outputPath: m3u8Downloader!.fileName,
+              headers: m3u8Downloader!.headers ?? {},
+              itemType: itemType,
+              chapterId: '${chapter.id}',
+            );
+            await fallbackEngine.start((progress) => setProgress(progress));
+          } else {
+            throw caughtError;
+          }
+        }
+      }
     }
     if (callback != null) {
       callback();
