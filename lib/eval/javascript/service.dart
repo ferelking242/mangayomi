@@ -87,9 +87,14 @@ async function jsonStringify(fn) {
     return JSON.stringify(await fn());
 }
 ''');
-    runtime.evaluate('''${source.sourceCode}
+    final _initResult = runtime.evaluate('''${source.sourceCode}
 var extention = new DefaultExtension();
 ''');
+    if (_initResult.isError) {
+      throw Exception(
+        'Extension "${source.name ?? source.id}" failed to initialise: ${_initResult.stringResult}',
+      );
+    }
     _isInitialized = true;
   }
 
