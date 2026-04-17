@@ -121,7 +121,9 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
     try {
       final nonFavIds = (await isar.mangas
               .filter()
-              .group((q) => q.favoriteEqualTo(false).or().favoriteIsNull())
+              .favoriteEqualTo(false)
+              .or()
+              .favoriteIsNull()
               .idProperty()
               .findAll())
           .whereType<int>()
