@@ -7,10 +7,6 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: watchtower
-
 jobs:
   build:
     name: Build ARMv8 Profile APK
@@ -39,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('watchtower/pubspec.lock') }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
 
       - name: Install dependencies
@@ -94,5 +90,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-arm64-profile
-          path: watchtower/build/app/outputs/apk/profile/app-arm64-v8a-profile.apk
+          path: build/app/outputs/apk/profile/app-arm64-v8a-profile.apk
           retention-days: 14
