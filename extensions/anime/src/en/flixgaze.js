@@ -7,7 +7,7 @@ const mangayomiSources = [{
       "iconUrl": "https://raw.githubusercontent.com/ferelking242/watchtower/main/extensions/anime/icon/en.flixgaze.png",
       "typeSource": "single",
       "itemType": 1,
-      "version": "0.3.0",
+      "version": "0.4.0",
       "pkgPath": "anime/src/en/flixgaze.js"
   }];
 
