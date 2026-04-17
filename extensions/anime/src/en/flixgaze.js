@@ -1,263 +1,297 @@
 const mangayomiSources = [{
-    "name": "FlixGaze",
-    "langs": ["en"],
-    "ids": { "en": 127384901 },
-    "baseUrl": "https://www.flixgaze.com",
-    "apiUrl": "https://www.flixgaze.com",
-    "iconUrl": "https://raw.githubusercontent.com/ferelking242/watchtower/main/extensions/anime/icon/en.flixgaze.png",
-    "typeSource": "single",
-    "itemType": 1,
-    "version": "0.2.0",
-    "pkgPath": "anime/src/en/flixgaze.js"
-}];
+      "name": "FlixGaze",
+      "langs": ["en"],
+      "ids": { "en": 127384901 },
+      "baseUrl": "https://www.flixgaze.com",
+      "apiUrl": "https://www.flixgaze.com",
+      "iconUrl": "https://raw.githubusercontent.com/ferelking242/watchtower/main/extensions/anime/icon/en.flixgaze.png",
+      "typeSource": "single",
+      "itemType": 1,
+      "version": "0.3.0",
+      "pkgPath": "anime/src/en/flixgaze.js"
+  }];
 
-class DefaultExtension extends MProvider {
-    constructor() {
-        super();
-        this.client = new Client();
-    }
+  class DefaultExtension extends MProvider {
+      constructor() {
+          super();
+          this.client = new Client();
+      }
 
-    // ── Headers ──────────────────────────────────────────────────────────────
-    getHeaders() {
-        return {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer": `${this.source.baseUrl}/`
-        };
-    }
+      getHeaders() {
+          return {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Referer": `${this.source.baseUrl}/`
+          };
+      }
 
-    // ── Page helpers ─────────────────────────────────────────────────────────
+      // Known category/navigation slugs to EXCLUDE from content listings
+      _CATEGORY_SLUGS = [
+          "movie", "tv-series", "foreign-movies", "marvel-cinematic-universe",
+          "genre", "category", "tag", "page", "year", "search"
+      ];
 
-    /**
-     * Extracts items from a standard FlixGaze listing page.
-     * Returns { list, hasNextPage }.
-     */
-    _parseListPage(html, currentPage) {
-        const list = [];
-        // FlixGaze uses WordPress posts in a grid; thumbnails are inside <article> or .items
-        // Pattern 1: <article ... > with post-thumbnail and title
-        const articleRe = /<article[^>]*>([\s\S]*?)<\/article>/gi;
-        let artMatch;
-        while ((artMatch = articleRe.exec(html)) !== null) {
-            const block = artMatch[1];
-            // Extract URL + title from anchor
-            const linkM = block.match(/href="(https?:\/\/[^"]+)"[^>]*title="([^"]+)"/);
-            // Try alternate: title in h2/h3 a
-            const linkM2 = block.match(/href="(https?:\/\/[^"]+)"/);
-            const titleM = block.match(/<(?:h2|h3)[^>]*>[^<]*<a[^>]*>([^<]+)<\/a>/i);
-            // Image
-            const imgM = block.match(/src="([^"]*(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"/i)
-                || block.match(/data-src="([^"]+)"/i);
-            const url = linkM ? linkM[1] : (linkM2 ? linkM2[1] : null);
-            const name = linkM ? linkM[2] : (titleM ? titleM[1].trim() : null);
-            const imageUrl = imgM ? imgM[1] : "";
-            if (url && name && !url.includes('?s=') && !url.includes('/page/')) {
-                list.push({ url, name: name.trim(), imageUrl });
-            }
-        }
+      _isContentUrl(href) {
+          if (!href || !href.includes("flixgaze.com")) return false;
+          const path = href.replace(/^https?:\/\/[^/]+/, "").replace(/\/$/, "");
+          const segments = path.split("/").filter(Boolean);
+          if (segments.length === 0) return false;
+          // Single-segment paths matching known categories are navigation links, not content
+          if (segments.length === 1 && this._CATEGORY_SLUGS.includes(segments[0])) return false;
+          return true;
+      }
 
-        // Pattern 2: .item or .post-item divs (fallback)
-        if (list.length === 0) {
-            const divRe = /<div[^>]*class="[^"]*(?:item|post)[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="[^"]*(?:item|post)|$)/gi;
-            let m;
-            while ((m = divRe.exec(html)) !== null) {
-                const block = m[1];
-                const linkM = block.match(/href="(https?:\/\/[^"]+)"/);
-                const titleM = block.match(/<(?:h2|h3|span)[^>]*>([^<]{3,80})<\/(?:h2|h3|span)>/i);
-                const imgM = block.match(/src="([^"]*(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"/i);
-                if (linkM && titleM) {
-                    list.push({
-                        url: linkM[1],
-                        name: titleM[1].trim(),
-                        imageUrl: imgM ? imgM[1] : ""
-                    });
-                }
-            }
-        }
+      _extractThumb(card) {
+          const imgs = card.select("img");
+          if (imgs && imgs.length > 0) {
+              for (const img of imgs) {
+                  const src = img.attr("data-src") ||
+                              img.attr("data-lazy-src") ||
+                              img.attr("data-lazy") ||
+                              img.attr("data-original") ||
+                              img.attr("data-cfsrc") ||
+                              img.attr("data-wpfc-original-src") ||
+                              img.attr("src") || "";
+                  if (src && !src.includes("data:image") && src.startsWith("http")) return src;
+              }
+          }
+          const styled = card.selectFirst("[style*='background']");
+          if (styled) {
+              const style = styled.attr("style") || "";
+              const m = style.match(/url\(['"\]?([^'"\)\s]+)['"\]?\)/);
+              if (m) return m[1];
+          }
+          return "";
+      }
 
-        // Pagination: check if there's a next page link
-        const nextPageRe = new RegExp(`/page/${currentPage + 1}/`);
-        const hasNextPage = nextPageRe.test(html) || html.includes(`page=${currentPage + 1}`);
+      _extractName(card, anchor) {
+          const titleEl = card.selectFirst(".entry-title") ||
+                          card.selectFirst(".post-title") ||
+                          card.selectFirst(".title") ||
+                          card.selectFirst("h2") ||
+                          card.selectFirst("h3");
+          if (titleEl && titleEl.text && titleEl.text.trim()) return titleEl.text.trim();
+          const anchorTitle = (anchor.attr("title") || anchor.attr("aria-label") || anchor.text || "").trim();
+          if (anchorTitle) return anchorTitle;
+          const href = anchor.attr("href") || "";
+          return href.split("/").filter(Boolean).pop().replace(/-/g, " ").trim();
+      }
 
-        return { list, hasNextPage };
-    }
+      _parseList(html, page) {
+          const doc = new Document(html);
+          const items = [];
+          const seen = [];
 
-    /** Fetches a paginated listing from a given base URL */
-    async _fetchList(baseUrl, page) {
-        const url = page > 1 ? `${baseUrl}/page/${page}/` : baseUrl;
-        const res = await this.client.get(url, this.getHeaders());
-        return this._parseListPage(res.body, page);
-    }
+          // Strategy 1: <article> elements (standard WordPress post cards)
+          const cards = doc.select("article");
+          if (cards && cards.length > 0) {
+              for (const card of cards) {
+                  const anchor = card.selectFirst("a[href]");
+                  if (!anchor) continue;
+                  const href = (anchor.attr("href") || "").trim();
+                  if (!this._isContentUrl(href)) continue;
+                  if (seen.indexOf(href) >= 0) continue;
+                  const thumb = this._extractThumb(card);
+                  // Require a thumbnail — navigation items never have one
+                  if (!thumb) continue;
+                  const name = this._extractName(card, anchor);
+                  if (!name || name.length < 2) continue;
+                  seen.push(href);
+                  items.push({ name, imageUrl: thumb, link: href });
+              }
+          }
 
-    // ── Browse ────────────────────────────────────────────────────────────────
+          // Strategy 2: common card selectors (fallback)
+          if (items.length === 0) {
+              const altCards = doc.select(".post-item, .item, .movie-item, .video-item, .film-item");
+              if (altCards) {
+                  for (const card of altCards) {
+                      const anchor = card.selectFirst("a[href]");
+                      if (!anchor) continue;
+                      const href = (anchor.attr("href") || "").trim();
+                      if (!this._isContentUrl(href)) continue;
+                      if (seen.indexOf(href) >= 0) continue;
+                      const thumb = this._extractThumb(card);
+                      if (!thumb) continue;
+                      const name = this._extractName(card, anchor);
+                      if (!name || name.length < 2) continue;
+                      seen.push(href);
+                      items.push({ name, imageUrl: thumb, link: href });
+                  }
+              }
+          }
 
-    /** Popular = Home page (featured/recent content) */
-    async getPopular(page) {
-        return this._fetchList(`${this.source.baseUrl}`, page);
-    }
+          const p = page || 1;
+          const hasNextPage = html.indexOf(`/page/${p + 1}/`) >= 0 ||
+                              html.indexOf(`?paged=${p + 1}`) >= 0 ||
+                              html.indexOf('rel="next"') >= 0 ||
+                              html.indexOf('class="next"') >= 0;
+          return { list: items, hasNextPage };
+      }
 
-    /** Latest = TV Series section (most frequently updated) */
-    async getLatestUpdates(page) {
-        return this._fetchList(`${this.source.baseUrl}/tv-series`, page);
-    }
+      async _fetchList(baseUrl, page) {
+          const b = baseUrl.replace(/\/$/, "");
+          const url = page > 1 ? `${b}/page/${page}/` : `${b}/`;
+          const res = await this.client.get(url, this.getHeaders());
+          return this._parseList(res.body, page);
+      }
 
-    // ── Search ───────────────────────────────────────────────────────────────
-    async search(query, page, filterList) {
-        // Check if a category filter is set
-        let categoryUrl = null;
-        for (const f of filterList) {
-            if (f && f.type_name === "SelectFilter" && f.name === "Catégorie" && f.state > 0) {
-                const opt = f.values[f.state];
-                if (opt) categoryUrl = opt.value;
-            }
-        }
+      // Popular = Home page (FlixGaze has no dedicated popular section)
+      async getPopular(page) {
+          return this._fetchList(`${this.source.baseUrl}`, page);
+      }
 
-        if (categoryUrl && !query) {
-            // Browse by category
-            return this._fetchList(categoryUrl, page);
-        }
+      // Latest = TV Series (most frequently updated section)
+      async getLatestUpdates(page) {
+          return this._fetchList(`${this.source.baseUrl}/tv-series`, page);
+      }
 
-        // Text search
-        const searchUrl = `${this.source.baseUrl}/?s=${encodeURIComponent(query)}&paged=${page}`;
-        const res = await this.client.get(searchUrl, this.getHeaders());
-        return this._parseListPage(res.body, page);
-    }
+      async search(query, page, filterList) {
+          let categoryUrl = null;
+          for (const f of (filterList || [])) {
+              if (f && f.type_name === "SelectFilter" && f.name === "Catégorie" && f.state > 0) {
+                  const opt = f.values[f.state];
+                  if (opt && opt.value) categoryUrl = opt.value;
+              }
+          }
+          if (categoryUrl && (!query || query.trim() === "")) {
+              return this._fetchList(categoryUrl, page);
+          }
+          const searchUrl = `${this.source.baseUrl}/?s=${encodeURIComponent((query || "").trim())}&paged=${page}`;
+          const res = await this.client.get(searchUrl, this.getHeaders());
+          return this._parseList(res.body, page);
+      }
 
-    // ── Custom category lists ─────────────────────────────────────────────────
-    getCustomLists() {
-        return [
-            { id: "movies",   name: "Films" },
-            { id: "series",   name: "Séries TV" },
-            { id: "foreign",  name: "Films Étrangers" },
-            { id: "marvel",   name: "MCU" }
-        ];
-    }
+      getCustomLists() {
+          return [
+              { id: "movies",  name: "Films" },
+              { id: "series",  name: "Séries TV" },
+              { id: "foreign", name: "Films Étrangers" },
+              { id: "marvel",  name: "MCU" }
+          ];
+      }
 
-    async getCustomList(id, page) {
-        const paths = {
-            movies:  `${this.source.baseUrl}/movie`,
-            series:  `${this.source.baseUrl}/tv-series`,
-            foreign: `${this.source.baseUrl}/foreign-movies`,
-            marvel:  `${this.source.baseUrl}/marvel-cinematic-universe`
-        };
-        const baseUrl = paths[id] || this.source.baseUrl;
-        return this._fetchList(baseUrl, page);
-    }
+      async getCustomList(id, page) {
+          const paths = {
+              movies:  `${this.source.baseUrl}/movie/`,
+              series:  `${this.source.baseUrl}/tv-series/`,
+              foreign: `${this.source.baseUrl}/foreign-movies/`,
+              marvel:  `${this.source.baseUrl}/marvel-cinematic-universe/`
+          };
+          return this._fetchList(paths[id] || this.source.baseUrl, page);
+      }
 
-    // ── Detail ────────────────────────────────────────────────────────────────
-    async getDetail(url) {
-        const res = await this.client.get(url, this.getHeaders());
-        const html = res.body;
+      async getDetail(url) {
+          const res = await this.client.get(url, this.getHeaders());
+          const html = res.body;
+          const doc = new Document(html);
 
-        // Title
-        const titleM = html.match(/<h1[^>]*class="[^"]*entry-title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i)
-            || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-        const name = titleM ? titleM[1].replace(/<[^>]+>/g, "").trim() : "";
+          const ogTitle = doc.selectFirst('meta[property="og:title"]');
+          const h1El = doc.selectFirst("h1.entry-title") || doc.selectFirst("h1");
+          const name = (ogTitle && ogTitle.attr("content")) ||
+                       (h1El && h1El.text && h1El.text.trim()) ||
+                       url.split("/").filter(Boolean).pop().replace(/-/g, " ");
 
-        // Poster image
-        const imgM = html.match(/class="[^"]*poster[^"]*"[^>]*>[\s\S]{0,200}?<img[^>]+src="([^"]+)"/i)
-            || html.match(/og:image"[^>]*content="([^"]+)"/i)
-            || html.match(/<img[^>]+class="[^"]*(?:thumbnail|poster|cover)[^"]*"[^>]+src="([^"]+)"/i);
-        const imageUrl = imgM ? imgM[1] : "";
+          const ogImg = doc.selectFirst('meta[property="og:image"]');
+          const thumbEl = doc.selectFirst(".post-thumbnail img") ||
+                          doc.selectFirst("img.wp-post-image") ||
+                          doc.selectFirst(".featured-image img") ||
+                          doc.selectFirst("img[class*='poster']") ||
+                          doc.selectFirst("img[class*='thumbnail']");
+          const imageUrl = (ogImg && ogImg.attr("content")) ||
+                           (thumbEl && (thumbEl.attr("data-src") || thumbEl.attr("data-lazy-src") || thumbEl.attr("src") || "")) || "";
 
-        // Description
-        const descM = html.match(/<div[^>]*class="[^"]*(?:description|synopsis|overview|entry-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-        const description = descM ? descM[1].replace(/<[^>]+>/g, "").trim() : "";
+          const ogDesc = doc.selectFirst('meta[property="og:description"]') ||
+                         doc.selectFirst('meta[name="description"]');
+          const descEl = doc.selectFirst(".entry-content p") || doc.selectFirst(".post-content p");
+          const description = (ogDesc && ogDesc.attr("content")) ||
+                              (descEl && descEl.text && descEl.text.trim()) || "";
 
-        // Genre tags
-        const genres = [];
-        const genreRe = /class="[^"]*(?:genre|tag|cat)[^"]*"[^>]*><a[^>]*>([^<]+)<\/a>/gi;
-        let gm;
-        while ((gm = genreRe.exec(html)) !== null) {
-            genres.push(gm[1].trim());
-        }
+          const genres = [];
+          for (const sel of [".cat-links a", ".genre a", "a[href*='/genre/']"]) {
+              const els = doc.select(sel);
+              if (els && els.length > 0) {
+                  for (const el of els) {
+                      const t = (el.text || "").trim();
+                      if (t && t.length > 1 && genres.findIndex(x => x.name === t) < 0) genres.push({ name: t });
+                  }
+                  if (genres.length > 0) break;
+              }
+          }
 
-        // Episodes — FlixGaze typically lists episodes as anchors on the show page
-        const chapters = [];
+          const chapters = [];
+          const seen = [];
+          const epEls = doc.select("a[href*='/episode'], a[href*='/season'], a[href*='/ep-']");
+          if (epEls && epEls.length > 0) {
+              for (const a of epEls) {
+                  const epUrl = (a.attr("href") || "").trim();
+                  if (!epUrl || seen.indexOf(epUrl) >= 0) continue;
+                  if (!epUrl.includes("flixgaze.com") && !epUrl.startsWith("/")) continue;
+                  seen.push(epUrl);
+                  const epName = (a.text || "").trim() || epUrl.split("/").filter(Boolean).pop().replace(/-/g, " ");
+                  if (epName.length > 1) chapters.push({ name: epName, url: epUrl, dateUpload: "" });
+              }
+          }
+          if (chapters.length === 0) chapters.push({ name: name || "Watch", url, dateUpload: "" });
 
-        // Pattern A: episode links in a list/table
-        const epRe = /<a[^>]+href="([^"]+\/(?:episode|ep|season)[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-        let em;
-        const seen = new Set();
-        while ((em = epRe.exec(html)) !== null) {
-            const epUrl = em[1];
-            if (seen.has(epUrl)) continue;
-            seen.add(epUrl);
-            const epName = em[2].replace(/<[^>]+>/g, "").trim() || "Episode";
-            chapters.push({ name: epName, url: epUrl, dateUpload: "" });
-        }
+          return { name, description, imageUrl, genre: genres, status: 0, chapters };
+      }
 
-        // If no episodes found, treat the page itself as a single entry (movie)
-        if (chapters.length === 0) {
-            chapters.push({ name: name || "Watch", url, dateUpload: "" });
-        }
+      async getVideoList(url) {
+          const res = await this.client.get(url, this.getHeaders());
+          const html = res.body;
+          const videos = [];
+          const seen = [];
 
-        return { name, description, imageUrl, genres, status: 0, chapters };
-    }
+          const zm = html.match(/pathId\s*=\s*["']([^"']+)["'][\s\S]*?domainId\s*=\s*["']([^"']+)["'][\s\S]*?videoId\s*=\s*["']([^"']+)["']/);
+          if (zm) {
+              const u = `${zm[2]}/${zm[1]}/${zm[3]}.m3u8`;
+              return [{ url: u, quality: "HLS · ZeusDL", originalUrl: u, headers: this.getHeaders() }];
+          }
 
-    // ── Video extraction ──────────────────────────────────────────────────────
-    async getVideoList(url) {
-        const res = await this.client.get(url, this.getHeaders());
-        const html = res.body;
-        const videos = [];
-        const seen = new Set();
+          const re = /["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*?)["']/g;
+          let m;
+          while ((m = re.exec(html)) !== null) {
+              if (!seen.includes(m[1])) {
+                  seen.push(m[1]);
+                  videos.push({ url: m[1], quality: m[1].includes("m3u8") ? "HLS" : "MP4", originalUrl: m[1] });
+              }
+          }
 
-        // 1. Direct m3u8 / mp4 links
-        const directRe = /["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*?)["']/gi;
-        let m;
-        while ((m = directRe.exec(html)) !== null) {
-            const u = m[1];
-            if (!seen.has(u)) {
-                seen.add(u);
-                const quality = u.includes("m3u8") ? "HLS" : "MP4";
-                videos.push({ url: u, quality, originalUrl: u });
-            }
-        }
+          if (videos.length === 0) {
+              const doc2 = new Document(html);
+              const iframes = doc2.select("iframe[src], iframe[data-src]");
+              if (iframes) {
+                  for (const iframe of iframes) {
+                      const src = iframe.attr("src") || iframe.attr("data-src") || "";
+                      if (src && !seen.includes(src)) {
+                          seen.push(src);
+                          videos.push({ url: src, quality: "Embed", originalUrl: src });
+                      }
+                  }
+              }
+          }
 
-        // 2. Iframes (embedded players)
-        const iframeRe = /<iframe[^>]+src="(https?:\/\/[^"]+)"/gi;
-        while ((m = iframeRe.exec(html)) !== null) {
-            const embedUrl = m[1];
-            if (!seen.has(embedUrl)) {
-                seen.add(embedUrl);
-                videos.push({ url: embedUrl, quality: "Embed", originalUrl: embedUrl });
-            }
-        }
+          if (videos.length === 0) videos.push({ url, quality: "Source", originalUrl: url });
+          return videos;
+      }
 
-        // 3. data-src / data-url iframes
-        const dataSrcRe = /data-(?:src|url)="(https?:\/\/[^"]+)"/gi;
-        while ((m = dataSrcRe.exec(html)) !== null) {
-            const u = m[1];
-            if (!seen.has(u) && (u.includes("m3u8") || u.includes("embed") || u.includes("player"))) {
-                seen.add(u);
-                videos.push({ url: u, quality: "Stream", originalUrl: u });
-            }
-        }
+      getFilterList() {
+          return [
+              {
+                  type_name: "SelectFilter",
+                  name: "Catégorie",
+                  state: 0,
+                  values: [
+                      { type_name: "SelectOption", name: "Tout",             value: "" },
+                      { type_name: "SelectOption", name: "Films",            value: `${this.source.baseUrl}/movie/` },
+                      { type_name: "SelectOption", name: "Séries TV",        value: `${this.source.baseUrl}/tv-series/` },
+                      { type_name: "SelectOption", name: "Films Étrangers",  value: `${this.source.baseUrl}/foreign-movies/` },
+                      { type_name: "SelectOption", name: "MCU",              value: `${this.source.baseUrl}/marvel-cinematic-universe/` }
+                  ]
+              }
+          ];
+      }
 
-        // 4. Fallback: return page URL for ZeusDL to handle
-        if (videos.length === 0) {
-            videos.push({ url, quality: "ZeusDL", originalUrl: url });
-        }
-
-        return videos;
-    }
-
-    // ── Filters ───────────────────────────────────────────────────────────────
-    getFilterList() {
-        return [
-            {
-                type_name: "SelectFilter",
-                name: "Catégorie",
-                state: 0,
-                values: [
-                    { type_name: "SelectOption", name: "Tout",           value: "" },
-                    { type_name: "SelectOption", name: "Films",          value: `${this.source.baseUrl}/movie` },
-                    { type_name: "SelectOption", name: "Séries TV",      value: `${this.source.baseUrl}/tv-series` },
-                    { type_name: "SelectOption", name: "Films Étrangers",value: `${this.source.baseUrl}/foreign-movies` },
-                    { type_name: "SelectOption", name: "MCU",            value: `${this.source.baseUrl}/marvel-cinematic-universe` }
-                ]
-            }
-        ];
-    }
-
-    getSourcePreferences() { return []; }
-}
+      getSourcePreferences() { return []; }
+  }
+  
