@@ -1,0 +1,1237 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:anymex/controllers/service_handler/params.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/details_page.dart';
+import 'package:anymex/screens/manga/details_page.dart';
+import 'package:anymex/screens/search/widgets/inline_search_history.dart';
+import 'package:anymex/screens/search/widgets/search_widgets.dart';
+import 'package:anymex/screens/settings/misc/sauce_finder_view.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/logger.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/common/glow.dart';
+import 'package:anymex/widgets/helper/platform_builder.dart';
+import 'package:anymex/widgets/media_items/media_item.dart';
+import 'package:anymex/widgets/media_items/media_peek_popup.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:anymex/widgets/custom_widgets/custom_text.dart';
+import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
+
+enum ViewMode { grid, list }
+
+enum SearchState { initial, loading, success, error, empty }
+
+class SearchPage extends StatefulWidget {
+  final String searchTerm;
+  final dynamic source;
+  final bool isManga;
+  final Map<String, dynamic>? initialFilters;
+
+  const SearchPage({
+    super.key,
+    required this.searchTerm,
+    required this.isManga,
+    this.source,
+    this.initialFilters,
+  });
+
+  @override
+  State<SearchPage> createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
+  final TextEditingController _searchController = TextEditingController();
+  final ServiceHandler _serviceHandler = Get.find<ServiceHandler>();
+  final RxList<String> _searchedTerms = <String>[].obs;
+  final ScrollController _resultsScrollController = ScrollController();
+
+  List<Media>? _searchResults;
+  ViewMode _currentViewMode = ViewMode.grid;
+  SearchState _searchState = SearchState.initial;
+  String? _errorMessage;
+  Map<String, dynamic> _activeFilters = {};
+  RxBool isAdult = false.obs;
+  int _currentPage = 1;
+  bool _isLoadingMore = false;
+  bool _hasMoreResults = false;
+  String _lastSearchQuery = '';
+  Map<String, dynamic> _lastApiFilters = {};
+
+  final FocusNode _searchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _initializeData();
+  }
+
+  void _initializeAnimations() {
+    _searchFocusNode.addListener(() {
+      setState(() {});
+    });
+    _resultsScrollController.addListener(_onResultsScroll);
+  }
+
+  void _initializeData() {
+    _searchController.text = widget.searchTerm;
+    _searchedTerms.value = DynamicKeys.searchHistory.get<List<String>>(
+      '${widget.isManga ? 'manga' : 'anime'}_${serviceHandler.serviceType.value.name}',
+      <String>[],
+    );
+
+    prefetchFilterMeta(
+      mediaType: widget.isManga ? 'manga' : 'anime',
+      config: _resolvedFilterConfig(),
+    );
+
+    if (widget.initialFilters != null) {
+      _activeFilters = Map<String, dynamic>.from(widget.initialFilters!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performSearch(filters: _activeFilters);
+      });
+    } else if (widget.searchTerm.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performSearch();
+      });
+    }
+  }
+
+  FilterConfig _resolvedFilterConfig() {
+    if (_serviceHandler.serviceType.value == ServicesType.mal) {
+      return widget.isManga ? FilterConfig.malManga : FilterConfig.malAnime;
+    }
+    return widget.isManga
+        ? FilterConfig.anilistManga
+        : FilterConfig.anilistAnime;
+  }
+
+  void _saveHistory() {
+    DynamicKeys.searchHistory.set(
+      '${widget.isManga ? 'manga' : 'anime'}_${serviceHandler.serviceType.value.name}',
+      _searchedTerms.toList(),
+    );
+  }
+
+  void _onResultsScroll() {
+    if (!_resultsScrollController.hasClients ||
+        _searchState != SearchState.success ||
+        _searchResults == null ||
+        _searchResults!.isEmpty ||
+        _isLoadingMore ||
+        !_hasMoreResults) {
+      return;
+    }
+
+    final position = _resultsScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 250) {
+      _loadMoreResults();
+    }
+  }
+
+  String _mediaKey(Media media) {
+    final rawId = media.id.toString();
+    return '${media.serviceType.name}|$rawId';
+  }
+
+  Map<String, dynamic> _buildApiFilters(String searchQuery) {
+    final apiFilters = Map<String, dynamic>.from(_activeFilters);
+    if (apiFilters['sort'] == null && searchQuery.isEmpty) {
+      apiFilters['sort'] = ['POPULARITY_DESC'];
+    }
+    return apiFilters;
+  }
+
+  Future<void> _performSearch({
+    String? query,
+    Map<String, dynamic>? filters,
+  }) async {
+    if (filters != null) {
+      filters = Map<String, dynamic>.from(filters)
+        ..removeWhere((key, value) => value == null);
+    }
+
+    final searchQuery = query ?? _searchController.text.trim();
+
+    Map<String, dynamic> currentFilters = filters ?? _activeFilters;
+    bool hasActiveContent = currentFilters.isNotEmpty;
+
+    if (searchQuery.isEmpty && !isAdult.value && !hasActiveContent) {
+      setState(() {
+        _searchState = SearchState.initial;
+        _searchResults = null;
+        _activeFilters = {};
+        _errorMessage = null;
+        _currentPage = 1;
+        _isLoadingMore = false;
+        _hasMoreResults = false;
+        _lastSearchQuery = '';
+        _lastApiFilters = {};
+      });
+      return;
+    }
+
+    setState(() {
+      _searchState = SearchState.loading;
+      _errorMessage = null;
+      _currentPage = 1;
+      _isLoadingMore = false;
+      _hasMoreResults = true;
+      if (filters != null) {
+        _activeFilters = Map<String, dynamic>.from(filters);
+      }
+    });
+
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+
+    try {
+      final apiFilters = _buildApiFilters(searchQuery);
+
+      final results = (await _serviceHandler.search(SearchParams(
+            query: searchQuery,
+            isManga: widget.isManga,
+            filters: apiFilters.isNotEmpty ? apiFilters : null,
+            args: isAdult.value,
+            page: 1,
+          ))) ??
+          [];
+      if (!mounted) return;
+
+      final uniqueResults = <Media>[];
+      final seen = <String>{};
+      for (final item in results) {
+        final key = _mediaKey(item);
+        if (seen.add(key)) {
+          uniqueResults.add(item);
+        }
+      }
+
+      if (searchQuery.isNotEmpty && !_searchedTerms.contains(searchQuery)) {
+        _searchedTerms.add(searchQuery);
+        _saveHistory();
+      }
+
+      setState(() {
+        _searchResults = uniqueResults;
+        _currentPage = 1;
+        _hasMoreResults = uniqueResults.isNotEmpty;
+        _lastSearchQuery = searchQuery;
+        _lastApiFilters = Map<String, dynamic>.from(apiFilters);
+        _searchState =
+            uniqueResults.isEmpty ? SearchState.empty : SearchState.success;
+      });
+
+      if (_resultsScrollController.hasClients) {
+        _resultsScrollController.jumpTo(0);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _searchState = SearchState.error;
+        _errorMessage = _getErrorMessage(e);
+        _isLoadingMore = false;
+        _hasMoreResults = false;
+      });
+      Logger.i('Search failed: $e');
+    }
+  }
+
+  Future<void> _loadMoreResults() async {
+    if (_isLoadingMore ||
+        !_hasMoreResults ||
+        _searchResults == null ||
+        _searchResults!.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    final nextPage = _currentPage + 1;
+
+    try {
+      final results = (await _serviceHandler.search(SearchParams(
+            query: _lastSearchQuery,
+            isManga: widget.isManga,
+            filters: _lastApiFilters.isNotEmpty
+                ? Map<String, dynamic>.from(_lastApiFilters)
+                : null,
+            args: isAdult.value,
+            page: nextPage,
+          ))) ??
+          [];
+      if (!mounted) return;
+
+      if (results.isEmpty) {
+        setState(() {
+          _hasMoreResults = false;
+        });
+        return;
+      }
+
+      final existingKeys = _searchResults!.map(_mediaKey).toSet();
+      final newItems = <Media>[];
+
+      for (final item in results) {
+        final key = _mediaKey(item);
+        if (existingKeys.add(key)) {
+          newItems.add(item);
+        }
+      }
+
+      setState(() {
+        if (newItems.isEmpty) {
+          _hasMoreResults = false;
+        } else {
+          _searchResults!.addAll(newItems);
+          _currentPage = nextPage;
+        }
+      });
+    } catch (e) {
+      Logger.i('Failed to load more search results: $e');
+      if (!mounted) return;
+      setState(() {
+        _hasMoreResults = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error.toString().contains('network') ||
+        error.toString().contains('connection')) {
+      return 'Network error. Please check your connection.';
+    } else if (error.toString().contains('timeout')) {
+      return 'Search timed out. Please try again.';
+    } else if (error.toString().contains('404')) {
+      return 'Service not available. Please try later.';
+    } else {
+      return 'Something went wrong. Please try again.';
+    }
+  }
+
+  @override
+  void dispose() {
+    _resultsScrollController
+      ..removeListener(_onResultsScroll)
+      ..dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  Widget _buildModernSearchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: _searchFocusNode.hasFocus
+            ? [
+                BoxShadow(
+                  color: context.colors.primary.opaque(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: context.colors.surfaceContainer.opaque(.5),
+          hintText:
+              'Search ${serviceHandler.serviceType.value == ServicesType.simkl ? 'movie or series' : widget.isManga ? 'manga' : 'anime'}...',
+          hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: context.colors.onSurface.opaque(0.5),
+              ),
+          prefixIcon: Icon(
+            Iconsax.search_normal,
+            color: _searchFocusNode.hasFocus
+                ? context.colors.primary
+                : context.colors.onSurface.opaque(0.5),
+          ),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchState = SearchState.initial;
+                      _searchResults = null;
+                      _currentPage = 1;
+                      _isLoadingMore = false;
+                      _hasMoreResults = false;
+                      _lastSearchQuery = '';
+                      _lastApiFilters = {};
+                    });
+                  },
+                  icon: Icon(
+                    Iconsax.close_circle,
+                    color: Theme.of(context).colorScheme.onSurface.opaque(0.7),
+                  ),
+                )
+              : serviceHandler.serviceType.value != ServicesType.anilist
+                  ? null
+                  : IconButton(
+                      onPressed: _showFilterBottomSheet,
+                      icon: Icon(
+                        Iconsax.setting_4,
+                        color: _activeFilters.isNotEmpty
+                            ? context.colors.primary
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .opaque(0.7),
+                      ),
+                    ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+        onSubmitted: (query) => _performSearch(query: query),
+        onChanged: (value) => setState(() {}),
+      ),
+    );
+  }
+
+  Widget _buildControlsSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          if (serviceHandler.serviceType.value == ServicesType.anilist) ...[
+            if (!General.hideAdultContent.get(true)) ...[
+              Obx(() {
+                return _buildToggleButton(
+                  label: 'Adult',
+                  isActive: isAdult.value,
+                  onTap: () {
+                    isAdult.value = !isAdult.value;
+                    _performSearch();
+                  },
+                );
+              }),
+              const SizedBox(width: 12),
+            ],
+            _buildActionButton(
+              icon: Iconsax.setting_4,
+              label: 'Filters',
+              isActive: _activeFilters.isNotEmpty,
+              onTap: _showFilterBottomSheet,
+            ),
+            if (!widget.isManga &&
+                serviceHandler.serviceType.value == ServicesType.anilist) ...[
+              const SizedBox(width: 12),
+              _buildActionButton(
+                icon: Iconsax.eye,
+                label: 'Image',
+                isActive: false,
+                onTap: () => navigate(() => const SauceFinderView()),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleButton({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? context.colors.primary.opaque(0.1)
+              : context.colors.surfaceContainer.opaque(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? context.colors.primary
+                : context.colors.outline.opaque(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isActive
+                        ? context.colors.primary
+                        : context.colors.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 20,
+              height: 12,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? context.colors.primary
+                    : context.colors.outline.opaque(0.3),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                alignment:
+                    isActive ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: context.colors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? context.colors.primary.opaque(0.1)
+              : context.colors.surfaceContainer.opaque(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? context.colors.primary
+                : context.colors.outline.opaque(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color:
+                  isActive ? context.colors.primary : context.colors.onSurface,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isActive
+                        ? context.colors.primary
+                        : context.colors.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewModeToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surface.opaque(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: context.colors.outline.opaque(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildViewModeButton(ViewMode.grid, Iconsax.grid_1),
+          _buildViewModeButton(ViewMode.list, Iconsax.menu_1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewModeButton(ViewMode mode, IconData icon) {
+    final isActive = _currentViewMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _currentViewMode = mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isActive ? context.colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isActive ? context.colors.onPrimary : context.colors.onSurface,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveFilters() {
+    if (_activeFilters.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _buildFilterChips(),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildFilterChips() {
+    List<Widget> chips = [];
+    final isManga = widget.isManga;
+
+    final Map<dynamic, String> currentServiceMap = {};
+    if (isManga) {
+      SearchFilterConstants.mangaReadableOnServices.forEach((lang, services) {
+        services.forEach((name, idList) {
+          for (var id in idList) {
+            currentServiceMap[id] = name;
+          }
+        });
+      });
+    } else {
+      SearchFilterConstants.animeStreamingServices.forEach((name, id) {
+        currentServiceMap[id] = name;
+      });
+    }
+
+    final Set<String> skipKeys = {'isLicensed'};
+
+    void addRangeChip(String baseKey, String label) {
+      if (_activeFilters.containsKey('${baseKey}Greater') ||
+          _activeFilters.containsKey('${baseKey}Lesser')) {
+        skipKeys.add('${baseKey}Greater');
+        skipKeys.add('${baseKey}Lesser');
+
+        final greater = _activeFilters['${baseKey}Greater'] ?? 0;
+        final lesser = _activeFilters['${baseKey}Lesser'] ?? 'Any';
+
+        String display;
+        if (baseKey == 'year') {
+          display =
+              '$label: ${greater ~/ 10000} - ${lesser is int ? (lesser ~/ 10000) - 1 : lesser}';
+        } else {
+          display = '$label: $greater - $lesser';
+        }
+
+        chips.add(_buildFilterChip(display, () {
+          setState(() {
+            _activeFilters.remove('${baseKey}Greater');
+            _activeFilters.remove('${baseKey}Lesser');
+          });
+          _performSearch(filters: _activeFilters);
+        }));
+      }
+    }
+
+    addRangeChip('year', 'Year');
+    if (isManga) {
+      addRangeChip('chapter', 'Chapters');
+      addRangeChip('volume', 'Volumes');
+    } else {
+      addRangeChip('episode', 'Episodes');
+      addRangeChip('duration', 'Duration (mins)');
+    }
+
+    _activeFilters.forEach((key, value) {
+      if (skipKeys.contains(key)) return;
+      if ((key == 'genres' || key == 'tags' || key == 'licensedBy') &&
+          value is List &&
+          value.isNotEmpty) {
+        if (key == 'licensedBy') {
+          final Map<String, List<int>> groupedPlatforms = {};
+          for (var item in value) {
+            String name = currentServiceMap[item] ?? 'Unknown Service';
+            groupedPlatforms.putIfAbsent(name, () => []).add(item as int);
+          }
+          groupedPlatforms.forEach((name, ids) {
+            chips.add(_buildFilterChip(name, () {
+              for (var id in ids) {
+                _removeFilter(key, id);
+              }
+            }));
+          });
+        } else {
+          for (var item in value) {
+            chips.add(_buildFilterChip(
+                item.toString(), () => _removeFilter(key, item)));
+          }
+        }
+      } else if (value != null && value.toString().isNotEmpty) {
+        String displayText = _formatFilterValue(key, value);
+        chips.add(
+            _buildFilterChip(displayText, () => _removeFilter(key, value)));
+      }
+    });
+
+    return chips;
+  }
+
+  Widget _buildFilterChip(String text, VoidCallback onRemove) {
+    return GestureDetector(
+      onTap: onRemove,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: context.colors.primary.opaque(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: context.colors.primary.opaque(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: context.colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.close,
+              size: 16,
+              color: context.colors.primary.opaque(0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    switch (_searchState) {
+      case SearchState.initial:
+        return _buildInitialState();
+      case SearchState.loading:
+        return _buildLoadingState();
+      case SearchState.success:
+        return _buildSuccessState();
+      case SearchState.error:
+        return _buildErrorState();
+      case SearchState.empty:
+        return _buildEmptyState();
+    }
+  }
+
+  Widget _buildInitialState() {
+    return Expanded(
+      child: InlineSearchHistory(
+        searchTerms: _searchedTerms,
+        onTermSelected: (term) {
+          _searchController.text = term;
+          _performSearch(query: term);
+        },
+        onHistoryUpdated: (updatedTerms) {
+          setState(() {
+            _searchedTerms.value = updatedTerms;
+          });
+          _saveHistory();
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: context.colors.primary.opaque(0.1, iReallyMeanIt: true),
+                shape: BoxShape.circle,
+              ),
+              child: const ExpressiveLoadingIndicator(),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Searching...',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .opaque(0.7, iReallyMeanIt: true),
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: context.colors.error.opaque(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Iconsax.warning_2,
+                size: 48,
+                color: context.colors.error,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Oops! Something went wrong',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Please try again later',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.opaque(0.7),
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _performSearch(),
+              icon: Icon(Iconsax.refresh, color: context.colors.onPrimary),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.colors.primary,
+                foregroundColor: context.colors.onPrimary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant.opaque(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Iconsax.search_normal,
+                size: 48,
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No results found',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try adjusting your search terms or filters',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.opaque(0.7),
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessState() {
+    return Expanded(
+      child: _buildSearchResults(),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    if (_searchResults == null || _searchResults!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final itemCount = _searchResults!.length + (_isLoadingMore ? 1 : 0);
+
+    return GridView.builder(
+      controller: _resultsScrollController,
+      padding: const EdgeInsets.all(20),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: _currentViewMode == ViewMode.list
+          ? const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 1,
+              mainAxisExtent: 120,
+            )
+          : SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: getResponsiveValue(context,
+                  mobileValue: 3,
+                  desktopValue: getResponsiveCrossAxisVal(
+                      MediaQuery.of(context).size.width,
+                      itemWidth: 108)),
+              crossAxisSpacing: 12.0,
+              mainAxisSpacing: 12.0,
+              mainAxisExtent: 240,
+            ),
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        if (_isLoadingMore && index == _searchResults!.length) {
+          return const Center(child: ExpressiveLoadingIndicator());
+        }
+
+        final media = _searchResults![index];
+        return AnimationConfiguration.staggeredGrid(
+          position: index,
+          columnCount: _currentViewMode == ViewMode.list ? 1 : 3,
+          child: ScaleAnimation(
+            duration: const Duration(milliseconds: 100),
+            child: _currentViewMode == ViewMode.list
+                ? _buildListItem(media)
+                : GridAnimeCard(
+                    data: media,
+                    isManga: widget.isManga,
+                    variant: CardVariant.search),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildListItem(Media media) {
+    final itemType = widget.isManga ? ItemType.manga : ItemType.anime;
+    return GestureDetector(
+      onTap: () => _navigateToDetails(media),
+      onLongPress: () {
+        if (media.userStatus == null || media.userStatus!.isEmpty) {
+          MediaPeekPopup.show(context, media, itemType, media.title);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color:
+              Theme.of(context).colorScheme.surfaceContainerHighest.opaque(0.3),
+          border: Border.all(
+            color: context.colors.outline.opaque(0.1, iReallyMeanIt: true),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Hero(
+                tag: media.title,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    width: 60,
+                    height: 88,
+                    imageUrl: media.poster,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: context.colors.surfaceVariant,
+                      child: Icon(
+                        Iconsax.image,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: context.colors.surfaceVariant,
+                      child: Icon(
+                        Iconsax.warning_2,
+                        color: context.colors.error,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnymexText(
+                      text: media.title,
+                      maxLines: 2,
+                      size: 16,
+                      variant: TextVariant.semiBold,
+                      isMarquee: true,
+                    ),
+                    if (media.rating != "??") ...[
+                      const SizedBox(height: 8),
+                      _buildRatingChip(media.rating),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Iconsax.arrow_right_3,
+                color:
+                    context.colors.onSurface.opaque(0.5, iReallyMeanIt: true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingChip(String rating) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: context.colors.primary.opaque(0.1, iReallyMeanIt: true),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: context.colors.primary.opaque(0.3, iReallyMeanIt: true),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Iconsax.star5,
+            size: 14,
+            color: context.colors.primary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            rating,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: context.colors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterBottomSheet() {
+    showFilterBottomSheet(context, (filters) {
+      _performSearch(filters: filters);
+    },
+        currentFilters: _activeFilters,
+        mediaType: widget.isManga ? 'manga' : 'anime',
+        config: _resolvedFilterConfig());
+  }
+
+  void _removeFilter(String key, dynamic value) {
+    if (_activeFilters.containsKey(key)) {
+      setState(() {
+        if ((key == 'genres' || key == 'tags' || key == 'licensedBy') &&
+            _activeFilters[key] is List) {
+          List<dynamic> items = List<dynamic>.from(_activeFilters[key]);
+          items.remove(value);
+          if (items.isEmpty) {
+            _activeFilters.remove(key);
+            if (key == 'licensedBy') {
+              _activeFilters.remove('isLicensed');
+            }
+          } else {
+            _activeFilters[key] = items;
+          }
+        } else {
+          _activeFilters.remove(key);
+        }
+      });
+      _performSearch(filters: _activeFilters);
+    }
+  }
+
+  String _formatFilterValue(String key, dynamic value) {
+    switch (key) {
+      case 'onList':
+        if (widget.isManga) {
+          return value == true ? "My Manga Only" : "Hide My Manga";
+        }
+        return value == true ? "My Anime Only" : "Hide My Anime";
+      case 'sort':
+        final sortVal =
+            value is List ? value.first.toString() : value.toString();
+        return "Sort: ${SearchFilterConstants.formatSort(sortVal)}";
+      case 'season':
+        return "Season: ${value.toString().toLowerCase().capitalize}";
+      case 'status':
+        return value.toString() != 'All'
+            ? "Status: ${SearchFilterConstants.formatStatus(value.toString(), isManga: widget.isManga)}"
+            : "";
+      case 'format':
+        return "Format: ${SearchFilterConstants.formatFormat(value.toString(), isManga: widget.isManga)}";
+      case 'isAdult':
+        return "18+ Content";
+      case 'source':
+        return "Source: ${value.toString().replaceAll('_', ' ').toLowerCase().split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')}";
+      case 'countryOfOrigin':
+        return "Country: ${SearchFilterConstants.formatCountry(value.toString())}";
+      case 'year':
+        return "Year: ${value.toString().replaceAll('%', '')}";
+      default:
+        return "$key: $value";
+    }
+  }
+
+  void _navigateToDetails(Media media) {
+    final shouldOpenAnime = media.serviceType == ServicesType.simkl;
+
+    if (widget.isManga && !shouldOpenAnime) {
+      navigate(() => MangaDetailsPage(
+            media: media,
+            tag: media.title,
+          ));
+    } else {
+      navigate(() => AnimeDetailsPage(
+            media: media,
+            tag: media.title,
+          ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Glow(
+      child: SafeArea(
+        child: Scaffold(
+          body: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Row(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(right: 5),
+                      decoration: BoxDecoration(
+                        color: context.colors.surface.opaque(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              Theme.of(context).colorScheme.outline.opaque(0.3),
+                        ),
+                      ),
+                      child: IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(
+                          Iconsax.arrow_left_2,
+                          color: context.colors.onSurface,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: _buildModernSearchBar()),
+                  ],
+                ),
+              ),
+              _buildControlsSection(),
+              const SizedBox(height: 16),
+              _buildActiveFilters(),
+              if (_searchState == SearchState.success &&
+                  _searchResults!.isNotEmpty) ...[
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Search Results',
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .opaque(0.1, iReallyMeanIt: true),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_searchResults!.length}',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: context.colors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      ),
+                      if (_searchState == SearchState.success) ...[
+                        const Spacer(),
+                        _buildViewModeToggle(),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+              _buildMainContent(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

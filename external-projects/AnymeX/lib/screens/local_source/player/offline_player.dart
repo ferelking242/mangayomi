@@ -1,0 +1,105 @@
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
+import 'package:anymex/screens/anime/watch/controls/themes/setup/themed_controls.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/double_tap_seek.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/episodes_pane.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/overlay.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/subtitle_text.dart';
+import 'package:anymex/screens/anime/widgets/media_indicator.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class LocalEpisode {
+  final String folderName;
+  final String name;
+  final String path;
+
+  LocalEpisode({
+    required this.folderName,
+    required this.name,
+    required this.path,
+  });
+}
+
+class OfflineWatchPage extends StatefulWidget {
+  final LocalEpisode episode;
+  final List<LocalEpisode> episodeList;
+  const OfflineWatchPage({
+    super.key,
+    required this.episode,
+    required this.episodeList,
+  });
+
+  @override
+  State<OfflineWatchPage> createState() => _OfflineWatchPageState();
+}
+
+class _OfflineWatchPageState extends State<OfflineWatchPage> {
+  late PlayerController controller;
+
+  @override
+  initState() {
+    super.initState();
+    controller = Get.put(PlayerController.offline(
+        folderName: widget.episode.folderName,
+        itemName: widget.episode.name,
+        videoPath: widget.episode.path,
+        episode: Episode(number: 'Offline'),
+        episodeList: [],
+        anilistData: Media(serviceType: ServicesType.simkl)));
+  }
+
+  @override
+  void dispose() {
+    Get.delete<PlayerController>();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: Stack(
+      children: [
+        Obx(() {
+          return controller.videoWidget;
+        }),
+        PlayerOverlay(controller: controller),
+        if (!PlayerKeys.useLibass.get<bool>(false))
+          SubtitleText(controller: controller),
+        DoubleTapSeekWidget(
+          controller: controller,
+        ),
+        const Align(
+          alignment: Alignment.center,
+          child: ThemedCenterControls(),
+        ),
+        const Align(
+          alignment: Alignment.topCenter,
+          child: ThemedTopControls(),
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: ThemedBottomControls(),
+        ),
+        MediaIndicatorBuilder(
+          isVolumeIndicator: false,
+          controller: controller,
+        ),
+        MediaIndicatorBuilder(
+          isVolumeIndicator: true,
+          controller: controller,
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          left: 0,
+          child: EpisodesPane(controller: controller),
+        ),
+      ],
+    ));
+  }
+}
