@@ -1,0 +1,566 @@
+name: Build ZeusDL
+
+on:
+  push:
+    tags:
+      - '[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]'
+      - '[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].[0-9]*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (YYYY.MM.DD or YYYY.MM.DD.rev)'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# ---------------------------------------------------------------------------
+# BUILD JOBS — each platform is independent and uses continue-on-error so
+# a single platform failure never blocks the release of the others.
+# ---------------------------------------------------------------------------
+
+jobs:
+
+  # ── Linux x86_64 ────────────────────────────────────────────────────────
+  build-linux-x86_64:
+    name: Build zeusdl-linux-x86_64
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: zeusdl
+        run: |
+          pip install pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+          pip install -e .[default]
+
+      - name: Generate lazy extractors
+        working-directory: zeusdl
+        run: python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+
+      - name: Build binary
+        working-directory: zeusdl
+        run: |
+          pyinstaller --onefile --name zeusdl-linux-x86_64 \
+            --collect-all zeusdl --copy-metadata zeusdl \
+            --hidden-import "zeusdl.extractor.lazy_extractors" \
+            zeusdl/__main__.py
+
+      - name: Strip and checksum
+        run: |
+          strip zeusdl/dist/zeusdl-linux-x86_64
+          cd zeusdl/dist
+          sha256sum zeusdl-linux-x86_64 > zeusdl-linux-x86_64.sha256
+          echo "Binary size: $(du -sh zeusdl-linux-x86_64 | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-linux-x86_64
+          path: |
+            zeusdl/dist/zeusdl-linux-x86_64
+            zeusdl/dist/zeusdl-linux-x86_64.sha256
+          retention-days: 7
+
+  # ── Linux arm64 ─────────────────────────────────────────────────────────
+  build-linux-arm64:
+    name: Build zeusdl-linux-arm64
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: zeusdl
+        run: |
+          pip install pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+          pip install -e .[default]
+
+      - name: Generate lazy extractors
+        working-directory: zeusdl
+        run: python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+
+      - name: Build binary
+        working-directory: zeusdl
+        run: |
+          pyinstaller --onefile --name zeusdl-linux-arm64 \
+            --collect-all zeusdl --copy-metadata zeusdl \
+            --hidden-import "zeusdl.extractor.lazy_extractors" \
+            zeusdl/__main__.py
+
+      - name: Strip and checksum
+        run: |
+          strip zeusdl/dist/zeusdl-linux-arm64
+          cd zeusdl/dist
+          sha256sum zeusdl-linux-arm64 > zeusdl-linux-arm64.sha256
+          echo "Binary size: $(du -sh zeusdl-linux-arm64 | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-linux-arm64
+          path: |
+            zeusdl/dist/zeusdl-linux-arm64
+            zeusdl/dist/zeusdl-linux-arm64.sha256
+          retention-days: 7
+
+  # ── Windows x86_64 ──────────────────────────────────────────────────────
+  build-windows-x86_64:
+    name: Build zeusdl-windows-x86_64
+    runs-on: windows-2022
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: zeusdl
+        run: |
+          pip install pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+          pip install -e .[default]
+
+      - name: Generate lazy extractors
+        working-directory: zeusdl
+        run: python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+
+      - name: Build binary
+        working-directory: zeusdl
+        run: |
+          pyinstaller --onefile --name zeusdl-windows-x86_64 `
+            --collect-all zeusdl --copy-metadata zeusdl `
+            --hidden-import "zeusdl.extractor.lazy_extractors" `
+            zeusdl/__main__.py
+
+      - name: Compute SHA256
+        shell: pwsh
+        run: |
+          $f = "zeusdl/dist/zeusdl-windows-x86_64.exe"
+          $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+          "$hash  zeusdl-windows-x86_64.exe" | Out-File -Encoding utf8 "zeusdl/dist/zeusdl-windows-x86_64.exe.sha256"
+          Write-Host "Binary size: $([math]::Round((Get-Item $f).Length / 1MB, 1)) MB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-windows-x86_64
+          path: |
+            zeusdl/dist/zeusdl-windows-x86_64.exe
+            zeusdl/dist/zeusdl-windows-x86_64.exe.sha256
+          retention-days: 7
+
+  # ── macOS x86_64 (Intel, built on Apple Silicon runner via universal2 Python) ──
+  # macos-14 (M1/M2) allocates in seconds. setup-python doesn't offer x86_64
+  # Python on Apple Silicon, so we install the official universal2 pkg from
+  # python.org, which supports both arm64 and x86_64. PyInstaller then uses
+  # --target-arch x86_64 to produce a native Intel binary.
+  # Do NOT run `strip` — it removes the embedded Python archive on macOS.
+  build-macos-x86_64:
+    name: Build zeusdl-macos-x86_64
+    runs-on: macos-14
+    continue-on-error: true
+    env:
+      PYTHON_BIN: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python 3.12 universal2 from python.org
+        run: |
+          curl -fsSL -o /tmp/python312.pkg \
+            https://www.python.org/ftp/python/3.12.9/python-3.12.9-macos11.pkg
+          sudo installer -pkg /tmp/python312.pkg -target /
+          echo "Python version: $($PYTHON_BIN --version)"
+          echo "Architecture support: $(file $PYTHON_BIN)"
+          # Add to PATH for subsequent steps
+          echo "/Library/Frameworks/Python.framework/Versions/3.12/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies (under Rosetta x86_64)
+        working-directory: zeusdl
+        run: |
+          # Run pip under Rosetta so extension modules (.so) are compiled for x86_64,
+          # not arm64. This ensures PyInstaller can bundle them into an x86_64 binary.
+          arch -x86_64 $PYTHON_BIN -m pip install --upgrade pip
+          arch -x86_64 $PYTHON_BIN -m pip install pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+          arch -x86_64 $PYTHON_BIN -m pip install -e .[default]
+
+      - name: Generate lazy extractors
+        working-directory: zeusdl
+        run: arch -x86_64 $PYTHON_BIN devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+
+      - name: Build binary (x86_64 via Rosetta)
+        working-directory: zeusdl
+        run: |
+          # Run PyInstaller under Rosetta — no --target-arch needed since the
+          # entire build process runs as x86_64 under Rosetta 2.
+          arch -x86_64 $PYTHON_BIN -m PyInstaller --onefile --name zeusdl-macos-x86_64 \
+            --collect-all zeusdl --copy-metadata zeusdl \
+            --hidden-import "zeusdl.extractor.lazy_extractors" \
+            zeusdl/__main__.py
+
+      - name: Verify and checksum
+        run: |
+          echo "File info: $(file zeusdl/dist/zeusdl-macos-x86_64)"
+          cd zeusdl/dist
+          shasum -a 256 zeusdl-macos-x86_64 > zeusdl-macos-x86_64.sha256
+          echo "Binary size: $(du -sh zeusdl-macos-x86_64 | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-macos-x86_64
+          path: |
+            zeusdl/dist/zeusdl-macos-x86_64
+            zeusdl/dist/zeusdl-macos-x86_64.sha256
+          retention-days: 7
+
+  # ── macOS arm64 (Apple Silicon) ─────────────────────────────────────────
+  # macos-14 uses M1 runners (arm64). Same strip warning as x86_64 — omit.
+  build-macos-arm64:
+    name: Build zeusdl-macos-arm64
+    runs-on: macos-14
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: zeusdl
+        run: |
+          pip install pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+          pip install -e .[default]
+
+      - name: Generate lazy extractors
+        working-directory: zeusdl
+        run: python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+
+      - name: Build binary
+        working-directory: zeusdl
+        run: |
+          pyinstaller --onefile --name zeusdl-macos-arm64 \
+            --collect-all zeusdl --copy-metadata zeusdl \
+            --hidden-import "zeusdl.extractor.lazy_extractors" \
+            --target-arch arm64 \
+            zeusdl/__main__.py
+
+      - name: Checksum
+        run: |
+          cd zeusdl/dist
+          shasum -a 256 zeusdl-macos-arm64 > zeusdl-macos-arm64.sha256
+          echo "Binary size: $(du -sh zeusdl-macos-arm64 | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-macos-arm64
+          path: |
+            zeusdl/dist/zeusdl-macos-arm64
+            zeusdl/dist/zeusdl-macos-arm64.sha256
+          retention-days: 7
+
+  # ── Android arm64 (Alpine/musl, aarch64) ────────────────────────────────
+  build-android-arm64:
+    name: Build zeusdl-android-arm64
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build in Alpine aarch64 (musl)
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: alpine_latest
+          dockerRunArgs: --volume "${{ github.workspace }}:/workspace"
+          install: |
+            apk add --no-cache python3 py3-pip python3-dev gcc musl-dev binutils patchelf
+          run: |
+            set -e
+            cd /workspace/zeusdl
+            echo "==> Installing Python dependencies"
+            pip3 install --break-system-packages pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+            pip3 install --break-system-packages -e .[default]
+            echo "==> Generating lazy extractors"
+            python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+            echo "==> Building binary"
+            pyinstaller --onefile --name zeusdl-android-arm64 \
+              --collect-all zeusdl --copy-metadata zeusdl \
+              --hidden-import "zeusdl.extractor.lazy_extractors" \
+              --strip zeusdl/__main__.py
+            echo "==> Checksumming"
+            sha256sum dist/zeusdl-android-arm64 > dist/zeusdl-android-arm64.sha256
+            echo "Binary size: $(du -sh dist/zeusdl-android-arm64 | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-android-arm64
+          path: |
+            zeusdl/dist/zeusdl-android-arm64
+            zeusdl/dist/zeusdl-android-arm64.sha256
+          retention-days: 7
+
+  # ── Android x86_64 (Alpine/musl via Docker) ─────────────────────────────
+  build-android-x86_64:
+    name: Build zeusdl-android-x86_64
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build in Alpine x86_64 (musl) via Docker
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            alpine:3.19 \
+            sh -c '
+              set -e
+              echo "==> Installing system packages"
+              apk add --no-cache python3 py3-pip python3-dev gcc musl-dev binutils patchelf
+              echo "==> Installing Python dependencies"
+              cd /workspace/zeusdl
+              pip3 install --break-system-packages pyinstaller brotli certifi mutagen pycryptodomex requests urllib3 websockets yt-dlp-ejs
+              pip3 install --break-system-packages -e .[default]
+              echo "==> Generating lazy extractors"
+              python3 devscripts/make_lazy_extractors.py zeusdl/extractor/lazy_extractors.py
+              echo "==> Building binary"
+              pyinstaller --onefile --name zeusdl-android-x86_64 \
+                --collect-all zeusdl --copy-metadata zeusdl \
+                --hidden-import zeusdl.extractor.lazy_extractors \
+                --strip zeusdl/__main__.py
+              echo "==> Checksumming"
+              sha256sum dist/zeusdl-android-x86_64 > dist/zeusdl-android-x86_64.sha256
+              echo "Binary size: $(du -sh dist/zeusdl-android-x86_64 | cut -f1)"
+            '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeusdl-android-x86_64
+          path: |
+            zeusdl/dist/zeusdl-android-x86_64
+            zeusdl/dist/zeusdl-android-x86_64.sha256
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # RELEASE JOB — runs after all builds (even if some fail via continue-on-error)
+  # Uploads whatever binaries were produced and generates version.json.
+  # ---------------------------------------------------------------------------
+
+  release:
+    name: Publish Release
+    needs:
+      - build-linux-x86_64
+      - build-linux-arm64
+      - build-windows-x86_64
+      - build-macos-x86_64
+      - build-macos-arm64
+      - build-android-arm64
+      - build-android-x86_64
+    runs-on: ubuntu-22.04
+    # Run on push to main or tags; skip on PRs. `always()` lets us proceed
+    # even when individual build jobs used continue-on-error.
+    if: always() && github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download only artifacts that were actually uploaded (pattern '*' with
+      # merge-multiple skips missing ones silently).
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List downloaded assets
+        run: |
+          echo "=== Release assets ==="
+          ls -lh release-assets/ || echo "(empty)"
+
+      - name: Determine release tag and metadata
+        id: meta
+        run: |
+          COMMIT="${{ github.sha }}"
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG=$(date -u +"%Y.%m.%d")
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "commit=${COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "build_date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=false" >> "$GITHUB_OUTPUT"
+      - name: Combine checksums
+        run: |
+          cd release-assets
+          if ls *.sha256 1>/dev/null 2>&1; then
+            sort *.sha256 > SHA256SUMS.txt
+            echo "=== SHA256SUMS ==="
+            cat SHA256SUMS.txt
+          else
+            echo "WARNING: No .sha256 files found" && touch SHA256SUMS.txt
+          fi
+
+      - name: Generate version.json
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          COMMIT="${{ steps.meta.outputs.commit }}"
+          BUILD_DATE="${{ steps.meta.outputs.build_date }}"
+
+          # Build list of architectures that were actually produced
+          ARCHES="[]"
+          ARCHES_LIST=""
+          for arch in linux-x86_64 linux-arm64 windows-x86_64 macos-x86_64 macos-arm64 android-arm64 android-x86_64; do
+            # Check for the binary (windows has .exe extension)
+            if ls release-assets/zeusdl-${arch}* 2>/dev/null | grep -v '\.sha256' | grep -q .; then
+              ARCHES_LIST="${ARCHES_LIST}\"${arch}\","
+            fi
+          done
+          ARCHES_LIST="${ARCHES_LIST%,}"
+
+          cat > release-assets/version.json <<EOF
+          {
+            "version_tag": "${TAG}",
+            "commit_hash": "${COMMIT}",
+            "build_date": "${BUILD_DATE}",
+            "nightly": ${{ steps.meta.outputs.nightly }},
+            "available_architectures": [${ARCHES_LIST}],
+            "download_base_url": "https://github.com/${{ github.repository }}/releases/download/${TAG}",
+            "latest_download_base_url": "https://github.com/${{ github.repository }}/releases/latest/download",
+            "binary_naming": "zeusdl-{arch}",
+            "windows_ext": ".exe"
+          }
+          EOF
+
+          echo "=== version.json ==="
+          cat release-assets/version.json
+
+      - name: Build release body
+        id: body
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          DATE="${{ steps.meta.outputs.build_date }}"
+          COMMIT="${{ steps.meta.outputs.commit }}"
+          REPO="${{ github.repository }}"
+
+          # Generate changelog from commits since the previous tag (or last 20 commits)
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${TAG}$" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" 2>/dev/null || true)
+          else
+            COMMITS=$(git log --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" -20 2>/dev/null || true)
+          fi
+
+          # Categorize commits
+          FEAT=$(echo "$COMMITS" | grep -E "^\- feat(\(.*\))?:" | sed 's/- feat[^:]*: /- /' || true)
+          FIX=$(echo "$COMMITS" | grep -E "^\- fix(\(.*\))?:" | sed 's/- fix[^:]*: /- /' || true)
+          CI=$(echo "$COMMITS" | grep -E "^\- ci(\(.*\))?:" | sed 's/- ci[^:]*: /- /' || true)
+          DOCS=$(echo "$COMMITS" | grep -E "^\- docs(\(.*\))?:" | sed 's/- docs[^:]*: /- /' || true)
+          CHORE=$(echo "$COMMITS" | grep -E "^\- (chore|refactor|perf|style|test)(\(.*\))?:" | sed 's/- [^:]*: /- /' || true)
+          OTHER=$(echo "$COMMITS" | grep -vE "^\- (feat|fix|ci|docs|chore|refactor|perf|style|test)(\(.*\))?:" || true)
+
+          {
+            echo "## ZeusDL ${TAG}"
+            echo ""
+            echo "**Build date:** ${DATE}  "
+            echo "**Commit:** [\`${COMMIT::7}\`](https://github.com/${REPO}/commit/${COMMIT})"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Changelog"
+            echo ""
+            if [ -n "$FEAT" ]; then
+              echo "### Features"
+              echo "$FEAT"
+              echo ""
+            fi
+            if [ -n "$FIX" ]; then
+              echo "### Bug Fixes"
+              echo "$FIX"
+              echo ""
+            fi
+            if [ -n "$CI" ]; then
+              echo "### CI/CD"
+              echo "$CI"
+              echo ""
+            fi
+            if [ -n "$DOCS" ]; then
+              echo "### Documentation"
+              echo "$DOCS"
+              echo ""
+            fi
+            if [ -n "$CHORE" ]; then
+              echo "### Maintenance"
+              echo "$CHORE"
+              echo ""
+            fi
+            if [ -n "$OTHER" ]; then
+              echo "### Other"
+              echo "$OTHER"
+              echo ""
+            fi
+            echo "---"
+            echo ""
+            echo "## Available binaries"
+            echo ""
+            echo "| Platform | Architecture | File |"
+            echo "|----------|-------------|------|"
+            echo "| Linux | x86_64 | [\`zeusdl-linux-x86_64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-linux-x86_64) |"
+            echo "| Linux | arm64 | [\`zeusdl-linux-arm64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-linux-arm64) |"
+            echo "| Windows | x86_64 | [\`zeusdl-windows-x86_64.exe\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-windows-x86_64.exe) |"
+            echo "| macOS | x86_64 (Intel) | [\`zeusdl-macos-x86_64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-macos-x86_64) |"
+            echo "| macOS | arm64 (Apple Silicon) | [\`zeusdl-macos-arm64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-macos-arm64) |"
+            echo "| Android/Termux | arm64 | [\`zeusdl-android-arm64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-android-arm64) |"
+            echo "| Android/Termux | x86_64 | [\`zeusdl-android-x86_64\`](https://github.com/${REPO}/releases/download/${TAG}/zeusdl-android-x86_64) |"
+            echo ""
+            echo "## Auto-update"
+            echo ""
+            echo "Poll \`version.json\` to detect new releases:"
+            echo "\`\`\`"
+            echo "https://github.com/${REPO}/releases/latest/download/version.json"
+            echo "\`\`\`"
+            echo ""
+            echo "## Verify checksums"
+            echo "\`\`\`bash"
+            echo "sha256sum -c SHA256SUMS.txt"
+            echo "\`\`\`"
+          } > /tmp/release_body.md
+
+          echo "body_file=/tmp/release_body.md" >> "$GITHUB_OUTPUT"
+          echo "=== Release body preview ==="
+          head -30 /tmp/release_body.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ZeusDL ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          body_path: ${{ steps.body.outputs.body_file }}
+          make_latest: true
+          files: release-assets/**
