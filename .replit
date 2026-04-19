@@ -20,3 +20,6 @@ args = "echo 'Watchtower Flutter app — build and run on Android/iOS device. Ed
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[agent]
+expertMode = true
