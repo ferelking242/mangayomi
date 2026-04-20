@@ -11,12 +11,89 @@ import 'package:path/path.dart' as path;
 // ─── Log Settings Keys (Hive box: advanced_settings) ──────────────────────────
 const _kLogBox = 'advanced_settings';
 const kLogMinLevel = 'log_min_level';
+const kLogMode = 'log_mode';
 const kLogTagExt = 'log_tag_ext';
 const kLogTagDl = 'log_tag_dl';
 const kLogTagNet = 'log_tag_net';
 const kLogTagZeus = 'log_tag_zeus';
 const kLogTagUi = 'log_tag_ui';
+const kLogTagManga = 'log_tag_manga';
+const kLogTagPage = 'log_tag_page';
+const kLogTagHls = 'log_tag_hls';
+const kLogTagInstall = 'log_tag_install';
+const kLogTagReader = 'log_tag_reader';
 const kLogSuppressImages = 'log_suppress_images';
+
+// ─── Log Modes ─────────────────────────────────────────────────────────────────
+enum LogMode {
+  normal,
+  verbose,
+  debug,
+  extreme;
+
+  String get displayName {
+    switch (this) {
+      case LogMode.normal:
+        return 'Normal';
+      case LogMode.verbose:
+        return 'Verbose';
+      case LogMode.debug:
+        return 'Debug';
+      case LogMode.extreme:
+        return 'Extreme';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case LogMode.normal:
+        return 'INFO+ · extensions & installs uniquement';
+      case LogMode.verbose:
+        return 'DEBUG+ · réseau, téléchargements, manga, HLS';
+      case LogMode.debug:
+        return 'DEBUG+ · tout sauf lectures page par page';
+      case LogMode.extreme:
+        return '⚡ TOUT logger – chaque page, segment HLS, événement lecteur';
+    }
+  }
+
+  int get minLevel => this == LogMode.normal ? 1 : 0;
+
+  bool get isHeavy => this == LogMode.debug || this == LogMode.extreme;
+
+  Map<String, bool> get defaultTags {
+    switch (this) {
+      case LogMode.normal:
+        return {
+          kLogTagExt: true, kLogTagDl: false, kLogTagNet: false,
+          kLogTagZeus: false, kLogTagUi: false, kLogTagManga: false,
+          kLogTagPage: false, kLogTagHls: false, kLogTagInstall: true,
+          kLogTagReader: false,
+        };
+      case LogMode.verbose:
+        return {
+          kLogTagExt: true, kLogTagDl: true, kLogTagNet: true,
+          kLogTagZeus: true, kLogTagUi: true, kLogTagManga: true,
+          kLogTagPage: false, kLogTagHls: true, kLogTagInstall: true,
+          kLogTagReader: false,
+        };
+      case LogMode.debug:
+        return {
+          kLogTagExt: true, kLogTagDl: true, kLogTagNet: true,
+          kLogTagZeus: true, kLogTagUi: true, kLogTagManga: true,
+          kLogTagPage: false, kLogTagHls: true, kLogTagInstall: true,
+          kLogTagReader: true,
+        };
+      case LogMode.extreme:
+        return {
+          kLogTagExt: true, kLogTagDl: true, kLogTagNet: true,
+          kLogTagZeus: true, kLogTagUi: true, kLogTagManga: true,
+          kLogTagPage: true, kLogTagHls: true, kLogTagInstall: true,
+          kLogTagReader: true,
+        };
+    }
+  }
+}
 
 class AppLogger {
   static final _logQueue = StreamController<String>();
@@ -75,6 +152,12 @@ class AppLogger {
         LogTag.network: kLogTagNet,
         LogTag.zeus: kLogTagZeus,
         LogTag.ui: kLogTagUi,
+        LogTag.manga: kLogTagManga,
+        LogTag.page: kLogTagPage,
+        LogTag.hls: kLogTagHls,
+        LogTag.install: kLogTagInstall,
+        LogTag.reader: kLogTagReader,
+        LogTag.repo: kLogTagExt, // REPO shares the EXT toggle
       };
       for (final entry in tagMap.entries) {
         final enabled = box.get(entry.value, defaultValue: true) as bool;
@@ -215,4 +298,9 @@ abstract final class LogTag {
   static const network = 'NET';
   static const repo = 'REPO';
   static const ui = 'UI';
+  static const manga = 'MANGA';
+  static const page = 'PAGE';
+  static const hls = 'HLS';
+  static const install = 'INSTALL';
+  static const reader = 'READER';
 }

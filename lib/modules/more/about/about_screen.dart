@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -325,6 +326,37 @@ class AboutScreen extends ConsumerWidget {
                                       botToast(l10n.no_app_logs);
                                     }
                                   },
+                                ),
+                                const Divider(height: 1, indent: 14),
+                                ListTile(
+                                  contentPadding:
+                                      const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                                  dense: true,
+                                  leading: Icon(
+                                    Icons.article_outlined,
+                                    size: 20,
+                                    color: cs.primary,
+                                  ),
+                                  title: Text(
+                                    'Lire les logs',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Affichage complet, coloré et filtrable',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurface.withOpacity(0.5),
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 16,
+                                    color: cs.onSurface.withOpacity(0.3),
+                                  ),
+                                  onTap: () => context.push('/logViewer'),
                                 ),
                               ],
                             ],

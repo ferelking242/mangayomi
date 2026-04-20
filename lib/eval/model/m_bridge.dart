@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:munchtoast/munchtoast.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:go_router/go_router.dart';
 import 'package:html/dom.dart' hide Text;
@@ -697,40 +698,59 @@ void Function() botToast(
   bool showIcon = true,
 }) {
   final context = navigatorKey.currentState?.context;
-  final assets = [
-    'assets/app_icons/icon-black.png',
-    'assets/app_icons/icon-red.png',
-  ];
-  return BotToast.showNotification(
-    onlyOne: onlyOne,
-    dismissDirections: dismissDirections,
-    align: Alignment(alignX, alignY),
+  if (context == null) return () {};
+
+  MunchToastType type = MunchToastType.info;
+  if (title.toLowerCase().contains('error') ||
+      title.toLowerCase().contains('erreur') ||
+      title.toLowerCase().contains('failed') ||
+      title.toLowerCase().contains('fail')) {
+    type = MunchToastType.error;
+  } else if (title.toLowerCase().contains('warn') ||
+      title.toLowerCase().contains('attention') ||
+      hasCloudFlare) {
+    type = MunchToastType.warning;
+  } else if (title.toLowerCase().contains('success') ||
+      title.toLowerCase().contains('ok') ||
+      title.toLowerCase().contains('copié') ||
+      title.toLowerCase().contains('terminé') ||
+      title.toLowerCase().contains('install')) {
+    type = MunchToastType.success;
+  }
+
+  MunchToast.show(
+    context,
+    message: hasCloudFlare ? '$title – Cloudflare' : title,
+    type: type,
+    position: MunchToastPosition.top,
     duration: Duration(seconds: second),
-    animationDuration: Duration(milliseconds: animationDuration),
-    animationReverseDuration: Duration(milliseconds: animationDuration),
-    leading: showIcon
-        ? (_) => Image.asset(
-            (themeDark == null
-                ? (assets..shuffle()).first
-                : assets[themeDark ? 0 : 1]),
-            height: 25,
-          )
+    textStyle: fontSize != null
+        ? TextStyle(fontSize: fontSize, color: Colors.white)
         : null,
-    title: (_) => Text(title, style: TextStyle(fontSize: fontSize)),
-    trailing: hasCloudFlare
-        ? (_) => OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(elevation: 10),
-            onPressed: () {
-              context?.push("/mangawebview", extra: {'url': url, 'title': ''});
-            },
-            label: Text(
-              "Resolve Cloudflare challenge",
-              style: TextStyle(color: context?.secondaryColor),
-            ),
-            icon: const Icon(Icons.public),
-          )
-        : null,
+    margin: const EdgeInsets.only(top: 8, right: 12, left: 12),
+    borderRadius: 12,
+    elevation: 6,
   );
+
+  if (hasCloudFlare && url != null) {
+    MunchToast.show(
+      context,
+      message: 'Appuyez pour résoudre Cloudflare',
+      type: MunchToastType.warning,
+      position: MunchToastPosition.top,
+      duration: Duration(seconds: second),
+      action: MunchToastAction(
+        label: 'Ouvrir',
+        onPressed: () {
+          context.push('/mangawebview', extra: {'url': url, 'title': ''});
+        },
+      ),
+      margin: const EdgeInsets.only(top: 8, right: 12, left: 12),
+      borderRadius: 12,
+    );
+  }
+
+  return () {};
 }
 
 (encrypt.Encrypter, encrypt.IV) _encrypt(String keyy, String ivv) {

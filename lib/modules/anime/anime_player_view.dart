@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:math';
-import 'package:bot_toast/bot_toast.dart';
 import 'package:ffi/ffi.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -1143,14 +1142,7 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
       moreWidget: IconButton(
         onPressed: () async {
           if (useLibass) {
-            BotToast.showText(
-              contentColor: Colors.white,
-              textStyle: const TextStyle(color: Colors.black, fontSize: 20),
-              onlyOne: true,
-              align: const Alignment(0, 0.90),
-              duration: const Duration(seconds: 2),
-              text: context.l10n.libass_not_disable_message,
-            );
+            botToast(context.l10n.libass_not_disable_message, second: 2);
           } else {
             await customDraggableTabBar(
               tabs: [
@@ -1504,12 +1496,7 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
     }
     _fit.value = fit;
     _key.currentState?.update(fit: fit);
-    BotToast.showText(
-      onlyOne: true,
-      align: const Alignment(0, 0.90),
-      duration: const Duration(seconds: 1),
-      text: fit.name.toUpperCase(),
-    );
+    botToast(fit.name.toUpperCase(), second: 1);
   }
 
   Widget _seekToWidget() {

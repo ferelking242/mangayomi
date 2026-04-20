@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
-import 'package:bot_toast/bot_toast.dart';
+import 'package:watchtower/eval/model/m_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:isar_community/isar.dart';
 import 'package:watchtower/eval/model/source_preference.dart';
@@ -20,7 +20,6 @@ import 'package:watchtower/models/update.dart';
 import 'package:watchtower/modules/more/data_and_storage/providers/backup_compression.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as p;
 part 'backup.g.dart';
 
@@ -157,71 +156,13 @@ Future<void> doBackUp(
     await zipEncoder.addFile(file);
     await zipEncoder.close();
     file.delete();
-    final assets = [
-      'assets/app_icons/icon-black.png',
-      'assets/app_icons/icon-red.png',
-    ];
     if (context != null && context.mounted) {
       Navigator.pop(context);
-      BotToast.showNotification(
-        animationDuration: const Duration(milliseconds: 200),
-        animationReverseDuration: const Duration(milliseconds: 200),
-        duration: const Duration(seconds: 5),
-        backButtonBehavior: BackButtonBehavior.none,
-        leading: (_) => Image.asset((assets..shuffle()).first, height: 25),
-        title: (_) => const Text(
-          "Backup created!",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        trailing: Platform.isLinux
-            ? null
-            : // Don't show share button on Linux, as there is no share-feature
-              (_) => UnconstrainedBox(
-                alignment: Alignment.topLeft,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final RenderBox? box =
-                        context.findRenderObject() as RenderBox?;
-                    SharePlus.instance.share(
-                      ShareParams(
-                        files: [XFile(p.join(path, "$name.backup"))],
-                        subject: "$name.backup",
-                        title: "Share Watchtower backup file",
-                        sharePositionOrigin: box == null
-                            ? null
-                            : box.localToGlobal(Offset.zero) & box.size,
-                      ),
-                    );
-                  },
-                  child: Text(context.l10n.share),
-                ),
-              ),
-        enableSlideOff: true,
-        onlyOne: true,
-        crossPage: true,
-      );
+      botToast("Backup created!", second: 5);
     }
   } catch (e) {
     if (context?.mounted ?? false) {
-      BotToast.showNotification(
-        animationDuration: const Duration(milliseconds: 200),
-        animationReverseDuration: const Duration(milliseconds: 200),
-        duration: const Duration(seconds: 7),
-        backButtonBehavior: BackButtonBehavior.none,
-        leading: (_) => const Icon(Icons.error, color: Colors.red),
-        title: (_) => Text(
-          "Backup failed: $e",
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-          ),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-        ),
-        enableSlideOff: true,
-        onlyOne: true,
-        crossPage: true,
-      );
+      botToast("Backup failed: $e", second: 7);
     }
   }
 }

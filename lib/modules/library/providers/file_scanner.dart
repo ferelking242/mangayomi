@@ -8,7 +8,7 @@ import 'package:watchtower/modules/library/providers/local_archive.dart';
 import 'package:watchtower/src/rust/api/epub.dart';
 import 'package:watchtower/utils/extensions/others.dart';
 import 'package:path/path.dart' as p; // For manipulating file system paths
-import 'package:bot_toast/bot_toast.dart'; // For Exceptions
+import 'package:watchtower/eval/model/m_bridge.dart';
 import 'package:watchtower/models/manga.dart'; // Has Manga model and ItemType enum
 import 'package:watchtower/models/chapter.dart'; // Has Chapter model with archivePath
 import 'package:watchtower/providers/storage_provider.dart'; // Provides storage directory selection
@@ -188,7 +188,7 @@ Future<void> _scanDirectory(Ref ref, Directory? dir) async {
           manga.lastUpdate = dateNow;
         }
       } catch (e) {
-        BotToast.showText(text: "Error reading cover image: $e");
+        botToast("Error reading cover image: $e");
       }
     } else if (imageFiles.isEmpty && manga.customCoverImage != null) {
       manga.customCoverImage = null;
@@ -209,7 +209,7 @@ Future<void> _scanDirectory(Ref ref, Directory? dir) async {
             : Status.unknown;
         manga.lastUpdate = dateNow;
       } catch (e) {
-        BotToast.showText(text: "Error reading metadata: $e");
+        botToast("Error reading metadata: $e");
       }
     }
 
@@ -248,9 +248,7 @@ Future<void> _scanDirectory(Ref ref, Directory? dir) async {
     // Save all new and changed items to the library
     await isar.writeTxn(() async => await isar.mangas.putAll(changedMangas));
   } catch (e) {
-    BotToast.showText(
-      text: "Database write error. Manga/Anime couldn't be saved: $e",
-    );
+    botToast("Database write error. Manga/Anime couldn't be saved: $e");
   }
 
   // If new Mangas have been added (no Id to save Chapters)
@@ -356,7 +354,7 @@ Future<void> _scanDirectory(Ref ref, Directory? dir) async {
       );
     }
   } catch (e) {
-    BotToast.showText(text: "Error saving chapter/episode to library: $e");
+    botToast("Error saving chapter/episode to library: $e");
   }
   try {
     if (chaptersToSave.isNotEmpty) {
@@ -374,9 +372,7 @@ Future<void> _scanDirectory(Ref ref, Directory? dir) async {
       });
     }
   } catch (e) {
-    BotToast.showText(
-      text: "Database write error. Manga/Anime couldn't be saved: $e",
-    );
+    botToast("Database write error. Manga/Anime couldn't be saved: $e");
   }
 }
 
@@ -386,7 +382,7 @@ Future<Directory?> getLocalLibrary() async {
     final dir = await StorageProvider().getDefaultDirectory();
     return dir == null ? null : Directory(p.join(dir.path, 'local'));
   } catch (e) {
-    BotToast.showText(text: "Error getting local library: $e");
+    botToast("Error getting local library: $e");
     return null;
   }
 }

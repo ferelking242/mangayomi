@@ -45,7 +45,12 @@ class DartExtensionService implements ExtensionService {
     RegistrerBridge.registerBridge(_interpreter!);
 
     // Normalize Client(...) calls so they work with the bridged constructor
+    // Also fix upstream extensions that still import the old 'mangayomi' package name
     final code = source.sourceCode!
+        .replaceAll(
+          'package:mangayomi/bridge_lib.dart',
+          'package:watchtower/bridge_lib.dart',
+        )
         .replaceAllMapped(
           RegExp(r'Client\(([^)]*)\)'),
           (m) {

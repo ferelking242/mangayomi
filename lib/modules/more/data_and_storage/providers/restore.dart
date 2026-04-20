@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:archive/archive_io.dart';
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_qjs/quickjs/ffi.dart';
 import 'package:isar_community/isar.dart';
@@ -68,19 +67,7 @@ void doRestore(Ref ref, {required String path, required BuildContext context}) {
   }
 }
 
-void showBotToast(String text) {
-  BotToast.showNotification(
-    animationDuration: const Duration(milliseconds: 200),
-    animationReverseDuration: const Duration(milliseconds: 200),
-    duration: const Duration(seconds: 5),
-    backButtonBehavior: BackButtonBehavior.none,
-    leading: (_) => Image.asset('assets/app_icons/icon-red.png', height: 40),
-    title: (_) => Text(text, style: TextStyle(fontWeight: FontWeight.bold)),
-    enableSlideOff: true,
-    onlyOne: true,
-    crossPage: true,
-  );
-}
+void showBotToast(String text) => botToast(text, second: 5);
 
 enum BackupType { unknown, watchtower, mihon, aniyomi, kotatsu, neko }
 

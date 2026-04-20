@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:bot_toast/bot_toast.dart';
+import 'package:watchtower/eval/model/m_bridge.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:watchtower/main.dart';
@@ -26,7 +26,7 @@ Future<void> checkForUpdate(
   final l10n = l10nLocalizations(context!)!;
 
   if (manualUpdate) {
-    BotToast.showText(text: l10n.searching_for_updates);
+    botToast(l10n.searching_for_updates);
   }
   final info = await PackageInfo.fromPlatform();
   if (kDebugMode) {
@@ -37,14 +37,14 @@ Future<void> checkForUpdate(
   // Sentinel '0.0.0' = no releases found or error → treat as up to date
   if (updateAvailable.$1 == '0.0.0' || updateAvailable.$1.isEmpty) {
     if (manualUpdate) {
-      BotToast.showText(text: l10n.no_new_updates_available);
+      botToast(l10n.no_new_updates_available);
     }
     return;
   }
 
   if (compareVersions(info.version, updateAvailable.$1) < 0) {
     if (manualUpdate) {
-      BotToast.showText(text: l10n.new_update_available);
+      botToast(l10n.new_update_available);
       await Future.delayed(const Duration(seconds: 1));
     }
     if (context.mounted) {
@@ -57,7 +57,7 @@ Future<void> checkForUpdate(
     }
   } else {
     if (manualUpdate) {
-      BotToast.showText(text: l10n.no_new_updates_available);
+      botToast(l10n.no_new_updates_available);
     }
   }
 }

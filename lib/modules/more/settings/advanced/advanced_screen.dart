@@ -66,13 +66,19 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
   int _bitmapThreshold = 4096;
 
   // ── Log settings ────────────────────────────────────────────────────────────
-  int _logMinLevel = 1; // 0=debug, 1=info, 2=warning, 3=error
+  int _logMode = 1; // 0=normal,1=verbose,2=debug,3=extreme
+  int _logMinLevel = 1;
   bool _logSuppressImages = true;
   bool _logTagExt = true;
   bool _logTagDl = true;
   bool _logTagNet = true;
   bool _logTagZeus = true;
   bool _logTagUi = true;
+  bool _logTagManga = false;
+  bool _logTagPage = false;
+  bool _logTagHls = false;
+  bool _logTagInstall = true;
+  bool _logTagReader = false;
 
   bool _loading = true;
 
@@ -90,6 +96,7 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
       _getBool(_kNonAsciiKey),
       _getInt(_kBitmapThresholdKey, defaultValue: 4096),
       // Log settings
+      _getInt(kLogMode, defaultValue: 1),
       _getInt(kLogMinLevel, defaultValue: 1),
       _getBool(kLogSuppressImages, defaultValue: true),
       _getBool(kLogTagExt, defaultValue: true),
@@ -97,6 +104,11 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
       _getBool(kLogTagNet, defaultValue: true),
       _getBool(kLogTagZeus, defaultValue: true),
       _getBool(kLogTagUi, defaultValue: true),
+      _getBool(kLogTagManga, defaultValue: false),
+      _getBool(kLogTagPage, defaultValue: false),
+      _getBool(kLogTagHls, defaultValue: false),
+      _getBool(kLogTagInstall, defaultValue: true),
+      _getBool(kLogTagReader, defaultValue: false),
     ]);
     if (mounted) {
       setState(() {
@@ -105,13 +117,19 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
         _oldDecoder = results[2] as bool;
         _noNonAscii = results[3] as bool;
         _bitmapThreshold = results[4] as int;
-        _logMinLevel = results[5] as int;
-        _logSuppressImages = results[6] as bool;
-        _logTagExt = results[7] as bool;
-        _logTagDl = results[8] as bool;
-        _logTagNet = results[9] as bool;
-        _logTagZeus = results[10] as bool;
-        _logTagUi = results[11] as bool;
+        _logMode = results[5] as int;
+        _logMinLevel = results[6] as int;
+        _logSuppressImages = results[7] as bool;
+        _logTagExt = results[8] as bool;
+        _logTagDl = results[9] as bool;
+        _logTagNet = results[10] as bool;
+        _logTagZeus = results[11] as bool;
+        _logTagUi = results[12] as bool;
+        _logTagManga = results[13] as bool;
+        _logTagPage = results[14] as bool;
+        _logTagHls = results[15] as bool;
+        _logTagInstall = results[16] as bool;
+        _logTagReader = results[17] as bool;
         _loading = false;
       });
     }
@@ -121,6 +139,39 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
     final box = await Hive.openBox('advanced_settings');
     await box.put(key, value);
     await AppLogger.reloadSettings();
+  }
+
+  Future<void> _applyMode(LogMode mode) async {
+    final tags = mode.defaultTags;
+    setState(() {
+      _logMode = mode.index;
+      _logMinLevel = mode.minLevel;
+      _logTagExt = tags[kLogTagExt]!;
+      _logTagDl = tags[kLogTagDl]!;
+      _logTagNet = tags[kLogTagNet]!;
+      _logTagZeus = tags[kLogTagZeus]!;
+      _logTagUi = tags[kLogTagUi]!;
+      _logTagManga = tags[kLogTagManga]!;
+      _logTagPage = tags[kLogTagPage]!;
+      _logTagHls = tags[kLogTagHls]!;
+      _logTagInstall = tags[kLogTagInstall]!;
+      _logTagReader = tags[kLogTagReader]!;
+    });
+    final box = await Hive.openBox('advanced_settings');
+    await box.put(kLogMode, mode.index);
+    await box.put(kLogMinLevel, mode.minLevel);
+    for (final e in tags.entries) {
+      await box.put(e.key, e.value);
+    }
+    await AppLogger.reloadSettings();
+    if (mode.isHeavy) {
+      botToast(
+        mode == LogMode.extreme
+            ? '⚡ Extreme – tout est logué. RAM +++. À utiliser avec précaution.'
+            : '⚠ Mode Debug actif – consommation RAM élevée',
+        second: 5,
+      );
+    }
   }
 
   void _toast(String msg) => botToast(msg);
@@ -639,40 +690,39 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
           // ── Section : Logs avancés ──────────────────────────────────────
           _sectionHeader("Logs avancés"),
           _LogAdvancedSection(
-            logMinLevel: _logMinLevel,
+            logMode: _logMode,
             logSuppressImages: _logSuppressImages,
             logTagExt: _logTagExt,
             logTagDl: _logTagDl,
             logTagNet: _logTagNet,
             logTagZeus: _logTagZeus,
             logTagUi: _logTagUi,
-            onLevelChanged: (level) {
-              setState(() => _logMinLevel = level);
-              _saveLogSetting(kLogMinLevel, level);
-            },
+            logTagManga: _logTagManga,
+            logTagPage: _logTagPage,
+            logTagHls: _logTagHls,
+            logTagInstall: _logTagInstall,
+            logTagReader: _logTagReader,
+            onModeChanged: (mode) => _applyMode(mode),
             onSuppressImagesChanged: (v) {
               setState(() => _logSuppressImages = v);
               _saveLogSetting(kLogSuppressImages, v);
             },
-            onTagExtChanged: (v) {
-              setState(() => _logTagExt = v);
-              _saveLogSetting(kLogTagExt, v);
-            },
-            onTagDlChanged: (v) {
-              setState(() => _logTagDl = v);
-              _saveLogSetting(kLogTagDl, v);
-            },
-            onTagNetChanged: (v) {
-              setState(() => _logTagNet = v);
-              _saveLogSetting(kLogTagNet, v);
-            },
-            onTagZeusChanged: (v) {
-              setState(() => _logTagZeus = v);
-              _saveLogSetting(kLogTagZeus, v);
-            },
-            onTagUiChanged: (v) {
-              setState(() => _logTagUi = v);
-              _saveLogSetting(kLogTagUi, v);
+            onTagChanged: (key, v) {
+              setState(() {
+                switch (key) {
+                  case kLogTagExt: _logTagExt = v; break;
+                  case kLogTagDl: _logTagDl = v; break;
+                  case kLogTagNet: _logTagNet = v; break;
+                  case kLogTagZeus: _logTagZeus = v; break;
+                  case kLogTagUi: _logTagUi = v; break;
+                  case kLogTagManga: _logTagManga = v; break;
+                  case kLogTagPage: _logTagPage = v; break;
+                  case kLogTagHls: _logTagHls = v; break;
+                  case kLogTagInstall: _logTagInstall = v; break;
+                  case kLogTagReader: _logTagReader = v; break;
+                }
+              });
+              _saveLogSetting(key, v);
             },
           ),
 
@@ -684,53 +734,43 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Log Advanced Section — aware of whether logs are enabled
+// Log Advanced Section — 4 preset modes + per-tag customization
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LogAdvancedSection extends ConsumerWidget {
-  final int logMinLevel;
+  final int logMode;
   final bool logSuppressImages;
   final bool logTagExt;
   final bool logTagDl;
   final bool logTagNet;
   final bool logTagZeus;
   final bool logTagUi;
-  final void Function(int) onLevelChanged;
+  final bool logTagManga;
+  final bool logTagPage;
+  final bool logTagHls;
+  final bool logTagInstall;
+  final bool logTagReader;
+  final void Function(LogMode) onModeChanged;
   final void Function(bool) onSuppressImagesChanged;
-  final void Function(bool) onTagExtChanged;
-  final void Function(bool) onTagDlChanged;
-  final void Function(bool) onTagNetChanged;
-  final void Function(bool) onTagZeusChanged;
-  final void Function(bool) onTagUiChanged;
+  final void Function(String, bool) onTagChanged;
 
   const _LogAdvancedSection({
-    required this.logMinLevel,
+    required this.logMode,
     required this.logSuppressImages,
     required this.logTagExt,
     required this.logTagDl,
     required this.logTagNet,
     required this.logTagZeus,
     required this.logTagUi,
-    required this.onLevelChanged,
+    required this.logTagManga,
+    required this.logTagPage,
+    required this.logTagHls,
+    required this.logTagInstall,
+    required this.logTagReader,
+    required this.onModeChanged,
     required this.onSuppressImagesChanged,
-    required this.onTagExtChanged,
-    required this.onTagDlChanged,
-    required this.onTagNetChanged,
-    required this.onTagZeusChanged,
-    required this.onTagUiChanged,
+    required this.onTagChanged,
   });
-
-  // Count how many tags are enabled
-  int get _enabledTagCount =>
-      [logTagExt, logTagDl, logTagNet, logTagZeus, logTagUi]
-          .where((v) => v)
-          .length;
-
-  // Whether the current config is performance-heavy
-  bool get _isHeavy => logMinLevel == 0 && _enabledTagCount >= 3;
-
-  // Whether to show a moderate warning (DEBUG level)
-  bool get _isDebugLevel => logMinLevel == 0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -738,29 +778,32 @@ class _LogAdvancedSection extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final secondary = Theme.of(context).textTheme.bodySmall?.color ??
         cs.onSurface.withOpacity(0.6);
+    final selectedMode = LogMode.values[logMode.clamp(0, 3)];
 
+    // ── Tag toggle helper ──────────────────────────────────────────────────
     Widget _logToggle({
       required String title,
       required String subtitle,
+      required String tagKey,
       required bool value,
-      required void Function(bool) onChanged,
       bool danger = false,
     }) {
-      final activeColor = danger ? Colors.orange : cs.primary;
+      final activeColor = danger ? Colors.red : cs.primary;
       return SwitchListTile(
+        dense: true,
         title: Text(
           title,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13.5,
             color: logsEnabled ? null : secondary,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(fontSize: 12, color: secondary),
+          style: TextStyle(fontSize: 11.5, color: secondary),
         ),
         value: value,
-        onChanged: logsEnabled ? onChanged : null,
+        onChanged: logsEnabled ? (v) => onTagChanged(tagKey, v) : null,
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return cs.onSurface.withOpacity(0.3);
@@ -781,79 +824,10 @@ class _LogAdvancedSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Notice: logs must be enabled ─────────────────────────────────
+        // ── Logs disabled notice ───────────────────────────────────────────
         if (!logsEnabled)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: cs.outline.withOpacity(0.25),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 18,
-                    color: cs.onSurface.withOpacity(0.55),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Les logs sont désactivés. Activez-les dans À propos > Développeur pour que ces filtres prennent effet.",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // ── Performance warning ───────────────────────────────────────────
-        if (logsEnabled && _isHeavy)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.4),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.warning_amber_rounded,
-                    size: 18,
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Configuration lourde : niveau DEBUG + plusieurs catégories actives. Cela peut ralentir l'application. Utilisez ERROR ou WARN en production.",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade800,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else if (logsEnabled && _isDebugLevel)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Container(
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest,
@@ -863,19 +837,14 @@ class _LogAdvancedSection extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 18,
-                    color: cs.onSurface.withOpacity(0.55),
-                  ),
+                  Icon(Icons.info_outline_rounded, size: 18,
+                      color: cs.onSurface.withOpacity(0.55)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "Niveau DEBUG : tous les logs sont enregistrés. À utiliser uniquement en débogage — peut légèrement affecter les performances.",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withOpacity(0.7),
-                      ),
+                      "Activez les logs dans À propos > Développeur pour configurer ces options.",
+                      style: TextStyle(fontSize: 12,
+                          color: cs.onSurface.withOpacity(0.7)),
                     ),
                   ),
                 ],
@@ -883,47 +852,44 @@ class _LogAdvancedSection extends ConsumerWidget {
             ),
           ),
 
-        // ── Log level chips ───────────────────────────────────────────────
+        // ── Mode selector ──────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Niveau minimum de log",
-                style: TextStyle(fontSize: 13, color: secondary),
-              ),
+              Text("Mode de logging",
+                  style: TextStyle(fontSize: 13, color: secondary)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: LogLevel.values.map((level) {
-                  final selected = logMinLevel == level.index;
-                  Color chipColor;
-                  switch (level) {
-                    case LogLevel.debug:
-                      chipColor = Colors.grey;
-                      break;
-                    case LogLevel.info:
+                runSpacing: 6,
+                children: LogMode.values.map((mode) {
+                  final selected = logMode == mode.index;
+                  final Color chipColor;
+                  switch (mode) {
+                    case LogMode.normal:
                       chipColor = Colors.green;
                       break;
-                    case LogLevel.warning:
+                    case LogMode.verbose:
+                      chipColor = Colors.blue;
+                      break;
+                    case LogMode.debug:
                       chipColor = Colors.orange;
                       break;
-                    case LogLevel.error:
+                    case LogMode.extreme:
                       chipColor = Colors.red;
                       break;
                   }
                   return ChoiceChip(
                     label: Text(
-                      level.displayName,
+                      mode.displayName,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: selected
                             ? Colors.white
-                            : logsEnabled
-                                ? chipColor
-                                : secondary,
+                            : logsEnabled ? chipColor : secondary,
                       ),
                     ),
                     selected: selected,
@@ -938,18 +904,16 @@ class _LogAdvancedSection extends ConsumerWidget {
                               ? chipColor.withOpacity(0.4)
                               : secondary.withOpacity(0.2),
                     ),
-                    onSelected: logsEnabled
-                        ? (_) => onLevelChanged(level.index)
-                        : null,
+                    onSelected: logsEnabled ? (_) => onModeChanged(mode) : null,
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
-                _levelDescription(logMinLevel),
+                selectedMode.description,
                 style: TextStyle(
                   fontSize: 11,
-                  color: secondary.withOpacity(0.7),
+                  color: secondary.withOpacity(0.75),
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -957,71 +921,117 @@ class _LogAdvancedSection extends ConsumerWidget {
           ),
         ),
 
-        const SizedBox(height: 8),
+        const Divider(height: 20, indent: 16, endIndent: 16),
 
-        // ── Suppress image errors ─────────────────────────────────────────
-        _logToggle(
-          title: "Supprimer erreurs de chargement d'images",
-          subtitle:
-              "Ne pas enregistrer les erreurs de logos manquants (icônes d'extensions 404)",
+        // ── Suppress image errors ──────────────────────────────────────────
+        SwitchListTile(
+          dense: true,
+          title: Text(
+            "Supprimer erreurs d'images",
+            style: TextStyle(
+              fontSize: 13.5,
+              color: logsEnabled ? null : secondary,
+            ),
+          ),
+          subtitle: Text(
+            "Ne pas enregistrer les erreurs de logos 404",
+            style: TextStyle(fontSize: 11.5, color: secondary),
+          ),
           value: logSuppressImages,
-          onChanged: onSuppressImagesChanged,
+          onChanged: logsEnabled ? onSuppressImagesChanged : null,
         ),
 
-        // ── Active tags ───────────────────────────────────────────────────
+        const Divider(height: 20, indent: 16, endIndent: 16),
+
+        // ── Active tags (fully customizable) ──────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text(
-            "Catégories à enregistrer",
-            style: TextStyle(fontSize: 13, color: secondary),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: Row(
+            children: [
+              Text("Catégories actives",
+                  style: TextStyle(fontSize: 13, color: secondary)),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: cs.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  "personnalisables",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+
         _logToggle(
           title: "Extensions [EXT]",
           subtitle: "Installation, mise à jour, erreurs d'extensions",
+          tagKey: kLogTagExt,
           value: logTagExt,
-          onChanged: onTagExtChanged,
+        ),
+        _logToggle(
+          title: "Installation détaillée [INSTALL]",
+          subtitle: "Chaque étape d'installation/désinstallation",
+          tagKey: kLogTagInstall,
+          value: logTagInstall,
         ),
         _logToggle(
           title: "Téléchargements [DL]",
-          subtitle: "Progression, erreurs de téléchargements",
+          subtitle: "Progression, reprise, erreurs de téléchargements",
+          tagKey: kLogTagDl,
           value: logTagDl,
-          onChanged: onTagDlChanged,
+        ),
+        _logToggle(
+          title: "HLS streaming [HLS]",
+          subtitle: "Segments HLS, manifest, erreurs de stream",
+          tagKey: kLogTagHls,
+          value: logTagHls,
         ),
         _logToggle(
           title: "Réseau [NET]",
-          subtitle: "Requêtes HTTP, erreurs réseau",
+          subtitle: "Requêtes HTTP, redirections, erreurs réseau",
+          tagKey: kLogTagNet,
           value: logTagNet,
-          onChanged: onTagNetChanged,
         ),
         _logToggle(
           title: "ZeusDL [ZEUS]",
-          subtitle: "Moteur de téléchargement ZeusDL / yt-dlp",
+          subtitle: "Moteur ZeusDL / yt-dlp – sorties complètes",
+          tagKey: kLogTagZeus,
           value: logTagZeus,
-          onChanged: onTagZeusChanged,
+        ),
+        _logToggle(
+          title: "Manga [MANGA]",
+          subtitle: "Chargement série, chapitres, métadonnées",
+          tagKey: kLogTagManga,
+          value: logTagManga,
+        ),
+        _logToggle(
+          title: "Lecteur [READER]",
+          subtitle: "Navigation lecteur, zoom, orientation",
+          tagKey: kLogTagReader,
+          value: logTagReader,
+        ),
+        _logToggle(
+          title: "Pages manga [PAGE]",
+          subtitle: "⚡ Chaque page chargée (très verbeux)",
+          tagKey: kLogTagPage,
+          value: logTagPage,
+          danger: true,
         ),
         _logToggle(
           title: "Interface [UI]",
           subtitle: "Événements et erreurs d'interface",
+          tagKey: kLogTagUi,
           value: logTagUi,
-          onChanged: onTagUiChanged,
         ),
       ],
     );
-  }
-
-  String _levelDescription(int level) {
-    switch (level) {
-      case 0:
-        return "DEBUG → tous les messages (verbeux, pour le débogage uniquement)";
-      case 1:
-        return "INFO → informations générales + avertissements + erreurs";
-      case 2:
-        return "WARN → avertissements + erreurs uniquement";
-      case 3:
-        return "ERROR → erreurs uniquement (le moins verbeux)";
-      default:
-        return "";
-    }
   }
 }
