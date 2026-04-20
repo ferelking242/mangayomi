@@ -78,6 +78,14 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
     // Shared state
     final speedLimit = ref.watch(speedLimitKBsStateProvider);
 
+    // Per-type simultaneous downloads
+    final watchSimultaneous = ref.watch(watchSimultaneousStateProvider);
+    final mangaSimultaneous = ref.watch(mangaSimultaneousStateProvider);
+    final novelSimultaneous = ref.watch(novelSimultaneousStateProvider);
+
+    // Card buttons
+    final cardButtons = ref.watch(cardButtonsStateProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Téléchargements')),
       body: SingleChildScrollView(
@@ -110,7 +118,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                     dividerColor: Colors.transparent,
                   ),
                   SizedBox(
-                    height: 520,
+                    height: 580,
                     child: TabBarView(
                       controller: _tabController,
                       children: [
@@ -118,6 +126,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                         _WatchTab(
                           downloadMode: downloadMode,
                           animeConnections: animeConnections,
+                          watchSimultaneous: watchSimultaneous,
                           watchOnlyOnWifi: watchOnlyOnWifi,
                           autoDownloadNewEpisodes: autoDownloadNewEpisodes,
                           downloadFillerEpisodes: downloadFillerEpisodes,
@@ -131,6 +140,10 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                           onConnectionsChanged: (v) =>
                               ref
                                   .read(animeConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onSimultaneousChanged: (v) =>
+                              ref
+                                  .read(watchSimultaneousStateProvider.notifier)
                                   .set(v),
                           onWifiChanged: (v) =>
                               ref
@@ -174,6 +187,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                         // ── Manga tab ──────────────────────────────────────
                         _MangaTab(
                           mangaConnections: mangaConnections,
+                          mangaSimultaneous: mangaSimultaneous,
                           archiveFormat: archiveFormat,
                           mangaOnlyOnWifi: mangaOnlyOnWifi,
                           autoDownloadNewChapters: autoDownloadNewChapters,
@@ -183,6 +197,10 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                           onConnectionsChanged: (v) =>
                               ref
                                   .read(mangaConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onSimultaneousChanged: (v) =>
+                              ref
+                                  .read(mangaSimultaneousStateProvider.notifier)
                                   .set(v),
                           onArchiveFormatChanged: (f) =>
                               ref
@@ -223,10 +241,15 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                         // ── Novel tab ──────────────────────────────────────
                         _NovelTab(
                           novelConnections: novelConnections,
+                          novelSimultaneous: novelSimultaneous,
                           novelOnlyOnWifi: novelOnlyOnWifi,
                           onConnectionsChanged: (v) =>
                               ref
                                   .read(novelConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onSimultaneousChanged: (v) =>
+                              ref
+                                  .read(novelSimultaneousStateProvider.notifier)
                                   .set(v),
                           onWifiChanged: (v) =>
                               ref
@@ -311,6 +334,31 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                       )
                       .set(v),
             ),
+
+            // ─── Design des cartes de téléchargement ──────────────────────
+            _SectionHeader(title: 'Design des cartes de téléchargement'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'Boutons affichés sur chaque carte de téléchargement',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            ...CardButton.values.map((btn) {
+              final enabled = cardButtons.contains(btn);
+              return CheckboxListTile(
+                dense: true,
+                secondary: Icon(btn.icon, size: 20),
+                title: Text(btn.label),
+                value: enabled,
+                onChanged: (_) => ref
+                    .read(cardButtonsStateProvider.notifier)
+                    .toggle(btn),
+              );
+            }),
 
             // ─── Actions de balayage ──────────────────────────────────────
             _SectionHeader(
@@ -684,6 +732,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
 class _WatchTab extends StatelessWidget {
   final DownloadMode downloadMode;
   final int animeConnections;
+  final int watchSimultaneous;
   final bool watchOnlyOnWifi;
   final bool autoDownloadNewEpisodes;
   final bool downloadFillerEpisodes;
@@ -692,6 +741,7 @@ class _WatchTab extends StatelessWidget {
   final String? preferredExternal;
   final void Function(DownloadMode) onModeChanged;
   final void Function(int) onConnectionsChanged;
+  final void Function(int) onSimultaneousChanged;
   final void Function(bool) onWifiChanged;
   final void Function(bool) onAutoEpisodesChanged;
   final void Function(bool) onFillerChanged;
@@ -702,6 +752,7 @@ class _WatchTab extends StatelessWidget {
   const _WatchTab({
     required this.downloadMode,
     required this.animeConnections,
+    required this.watchSimultaneous,
     required this.watchOnlyOnWifi,
     required this.autoDownloadNewEpisodes,
     required this.downloadFillerEpisodes,
@@ -710,6 +761,7 @@ class _WatchTab extends StatelessWidget {
     required this.preferredExternal,
     required this.onModeChanged,
     required this.onConnectionsChanged,
+    required this.onSimultaneousChanged,
     required this.onWifiChanged,
     required this.onAutoEpisodesChanged,
     required this.onFillerChanged,
@@ -741,6 +793,14 @@ class _WatchTab extends StatelessWidget {
             value: animeConnections,
             icon: Icons.cable_outlined,
             onChanged: onConnectionsChanged,
+            scheme: scheme,
+          ),
+          _ConnectionsTile(
+            label: 'Épisodes simultanés (file)',
+            subtitle: 'Nombre d\'épisodes téléchargés en même temps',
+            value: watchSimultaneous,
+            icon: Icons.queue_outlined,
+            onChanged: onSimultaneousChanged,
             scheme: scheme,
           ),
           const Divider(height: 16),
@@ -853,6 +913,7 @@ class _WatchTab extends StatelessWidget {
 
 class _MangaTab extends StatelessWidget {
   final int mangaConnections;
+  final int mangaSimultaneous;
   final MangaArchiveFormat archiveFormat;
   final bool mangaOnlyOnWifi;
   final bool autoDownloadNewChapters;
@@ -860,6 +921,7 @@ class _MangaTab extends StatelessWidget {
   final bool allowDeletingBookmarked;
   final bool anticipatoryDownloadRead;
   final void Function(int) onConnectionsChanged;
+  final void Function(int) onSimultaneousChanged;
   final void Function(MangaArchiveFormat) onArchiveFormatChanged;
   final void Function(bool) onWifiChanged;
   final void Function(bool) onAutoChaptersChanged;
@@ -869,6 +931,7 @@ class _MangaTab extends StatelessWidget {
 
   const _MangaTab({
     required this.mangaConnections,
+    required this.mangaSimultaneous,
     required this.archiveFormat,
     required this.mangaOnlyOnWifi,
     required this.autoDownloadNewChapters,
@@ -876,6 +939,7 @@ class _MangaTab extends StatelessWidget {
     required this.allowDeletingBookmarked,
     required this.anticipatoryDownloadRead,
     required this.onConnectionsChanged,
+    required this.onSimultaneousChanged,
     required this.onArchiveFormatChanged,
     required this.onWifiChanged,
     required this.onAutoChaptersChanged,
@@ -898,6 +962,14 @@ class _MangaTab extends StatelessWidget {
             value: mangaConnections,
             icon: Icons.image_outlined,
             onChanged: onConnectionsChanged,
+            scheme: scheme,
+          ),
+          _ConnectionsTile(
+            label: 'Chapitres simultanés (file)',
+            subtitle: 'Nombre de chapitres téléchargés en même temps',
+            value: mangaSimultaneous,
+            icon: Icons.queue_outlined,
+            onChanged: onSimultaneousChanged,
             scheme: scheme,
           ),
           const SizedBox(height: 4),
@@ -971,14 +1043,18 @@ class _MangaTab extends StatelessWidget {
 
 class _NovelTab extends StatelessWidget {
   final int novelConnections;
+  final int novelSimultaneous;
   final bool novelOnlyOnWifi;
   final void Function(int) onConnectionsChanged;
+  final void Function(int) onSimultaneousChanged;
   final void Function(bool) onWifiChanged;
 
   const _NovelTab({
     required this.novelConnections,
+    required this.novelSimultaneous,
     required this.novelOnlyOnWifi,
     required this.onConnectionsChanged,
+    required this.onSimultaneousChanged,
     required this.onWifiChanged,
   });
 
@@ -1014,11 +1090,19 @@ class _NovelTab extends StatelessWidget {
             ),
           ),
           _ConnectionsTile(
-            label: 'Téléchargements simultanés',
-            subtitle: 'Chapitres téléchargés en parallèle',
+            label: 'Connexions simultanées',
+            subtitle: 'Connexions parallèles par chapitre',
             value: novelConnections,
             icon: Icons.download_outlined,
             onChanged: onConnectionsChanged,
+            scheme: scheme,
+          ),
+          _ConnectionsTile(
+            label: 'Chapitres simultanés (file)',
+            subtitle: 'Nombre de chapitres téléchargés en même temps',
+            value: novelSimultaneous,
+            icon: Icons.queue_outlined,
+            onChanged: onSimultaneousChanged,
             scheme: scheme,
           ),
           const SizedBox(height: 4),

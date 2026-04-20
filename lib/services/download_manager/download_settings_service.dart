@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Engine mode for anime (video) downloads only.
@@ -296,6 +297,51 @@ class DownloadSettingsService {
     await _save();
   }
 
+  // ── Per-type simultaneous downloads (queue slots) ─────────────────────────
+
+  int get watchSimultaneous =>
+      (_data['watchSimultaneous'] as int? ?? 2).clamp(1, 10);
+  Future<void> setWatchSimultaneous(int v) async {
+    _data['watchSimultaneous'] = v.clamp(1, 10);
+    await _save();
+  }
+
+  int get mangaSimultaneous =>
+      (_data['mangaSimultaneous'] as int? ?? 3).clamp(1, 10);
+  Future<void> setMangaSimultaneous(int v) async {
+    _data['mangaSimultaneous'] = v.clamp(1, 10);
+    await _save();
+  }
+
+  int get novelSimultaneous =>
+      (_data['novelSimultaneous'] as int? ?? 3).clamp(1, 10);
+  Future<void> setNovelSimultaneous(int v) async {
+    _data['novelSimultaneous'] = v.clamp(1, 10);
+    await _save();
+  }
+
+  // ── Card buttons (which action buttons appear on each download card) ────────
+
+  /// Returns the set of enabled card button names.
+  /// Default: pauseResume only.
+  Set<CardButton> get enabledCardButtons {
+    final raw = _data['cardButtons'] as List?;
+    if (raw == null) return {CardButton.pauseResume};
+    return raw
+        .map((e) {
+          final idx = e as int? ?? -1;
+          if (idx < 0 || idx >= CardButton.values.length) return null;
+          return CardButton.values[idx];
+        })
+        .whereType<CardButton>()
+        .toSet();
+  }
+
+  Future<void> setEnabledCardButtons(Set<CardButton> buttons) async {
+    _data['cardButtons'] = buttons.map((b) => b.index).toList();
+    await _save();
+  }
+
   // ── Swipe actions ─────────────────────────────────────────────────────────
 
   SwipeAction get swipeLeftAction {
@@ -317,5 +363,41 @@ class DownloadSettingsService {
   Future<void> setSwipeRightAction(SwipeAction action) async {
     _data['swipeRightAction'] = action.index;
     await _save();
+  }
+}
+
+// ── Card button enum ──────────────────────────────────────────────────────────
+
+enum CardButton { pauseResume, retry, cancel, delete, openFolder }
+
+extension CardButtonExt on CardButton {
+  String get label {
+    switch (this) {
+      case CardButton.pauseResume:
+        return 'Pause / Reprendre';
+      case CardButton.retry:
+        return 'Réessayer';
+      case CardButton.cancel:
+        return 'Annuler';
+      case CardButton.delete:
+        return 'Supprimer';
+      case CardButton.openFolder:
+        return 'Ouvrir dossier';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case CardButton.pauseResume:
+        return Icons.pause_circle_outline;
+      case CardButton.retry:
+        return Icons.replay_outlined;
+      case CardButton.cancel:
+        return Icons.close_outlined;
+      case CardButton.delete:
+        return Icons.delete_outline;
+      case CardButton.openFolder:
+        return Icons.folder_open_outlined;
+    }
   }
 }

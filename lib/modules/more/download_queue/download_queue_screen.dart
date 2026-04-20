@@ -6,7 +6,6 @@ import 'package:watchtower/main.dart';
 import 'package:watchtower/models/chapter.dart';
 import 'package:watchtower/models/download.dart';
 import 'package:watchtower/models/manga.dart';
-import 'package:watchtower/modules/manga/detail/widgets/custom_floating_action_btn.dart';
 import 'package:watchtower/modules/manga/download/providers/download_provider.dart';
 import 'package:watchtower/modules/more/settings/downloads/providers/downloads_state_provider.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
@@ -234,9 +233,14 @@ class _DownloadQueueScreenState extends ConsumerState<DownloadQueueScreen>
                 queueState: queueState,
                 swipeLeft: swipeLeft,
                 swipeRight: swipeRight,
-                onPauseResume: (e) => ref
-                    .read(downloadQueueStateProvider.notifier)
-                    .togglePause(e.id ?? -1),
+                onPauseResume: (e) {
+                  final wasPaused = queueState.pausedIds.contains(e.id ?? -1);
+                  ref
+                      .read(downloadQueueStateProvider.notifier)
+                      .togglePause(e.id ?? -1);
+                  // If was paused → now resuming: re-trigger internal engines
+                  if (wasPaused) ref.read(processDownloadsProvider());
+                },
                 onCancel: (e) => _cancelDownload(e, context),
                 onDelete: (e) => _deleteDownload(e, context),
                 onRetry: (e) => _retryDownload(e, ref, context),
@@ -249,9 +253,13 @@ class _DownloadQueueScreenState extends ConsumerState<DownloadQueueScreen>
                 queueState: queueState,
                 swipeLeft: swipeLeft,
                 swipeRight: swipeRight,
-                onPauseResume: (e) => ref
-                    .read(downloadQueueStateProvider.notifier)
-                    .togglePause(e.id ?? -1),
+                onPauseResume: (e) {
+                  final wasPaused = queueState.pausedIds.contains(e.id ?? -1);
+                  ref
+                      .read(downloadQueueStateProvider.notifier)
+                      .togglePause(e.id ?? -1);
+                  if (wasPaused) ref.read(processDownloadsProvider());
+                },
                 onCancel: (e) => _cancelDownload(e, context),
                 onDelete: (e) => _deleteDownload(e, context),
                 onRetry: (e) => _retryDownload(e, ref, context),
@@ -264,21 +272,22 @@ class _DownloadQueueScreenState extends ConsumerState<DownloadQueueScreen>
                 queueState: queueState,
                 swipeLeft: swipeLeft,
                 swipeRight: swipeRight,
-                onPauseResume: (e) => ref
-                    .read(downloadQueueStateProvider.notifier)
-                    .togglePause(e.id ?? -1),
+                onPauseResume: (e) {
+                  final wasPaused = queueState.pausedIds.contains(e.id ?? -1);
+                  ref
+                      .read(downloadQueueStateProvider.notifier)
+                      .togglePause(e.id ?? -1);
+                  if (wasPaused) ref.read(processDownloadsProvider());
+                },
                 onCancel: (e) => _cancelDownload(e, context),
                 onDelete: (e) => _deleteDownload(e, context),
                 onRetry: (e) => _retryDownload(e, ref, context),
               ),
             ],
           ),
-          floatingActionButton: CustomFloatingActionBtn(
-            isExtended: false,
-            label: l10n.download_queue,
-            onPressed: () {
-              ref.read(processDownloadsProvider());
-            },
+          floatingActionButton: _PauseResumeAllFab(
+            entries: entries,
+            queueState: queueState,
           ),
         );
       },
@@ -298,6 +307,8 @@ class _DownloadQueueScreenState extends ConsumerState<DownloadQueueScreen>
         break;
       case _GlobalAction.resumeAll:
         ref.read(downloadQueueStateProvider.notifier).resumeAll();
+        // Re-trigger for internal engines (ZeusDL uses SIGCONT, internal needs re-queue)
+        ref.read(processDownloadsProvider());
         break;
       case _GlobalAction.stopAll:
         for (final e in entries) {
@@ -510,7 +521,7 @@ class _DownloadTabList extends StatelessWidget {
 // Download Card with swipe actions
 // ──────────────────────────────────────────────────────────────
 
-class _DownloadCard extends StatelessWidget {
+class _DownloadCard extends ConsumerWidget {
   final Download download;
   final bool isPaused;
   final String engine;
@@ -618,10 +629,11 @@ class _DownloadCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final manga = download.chapter.value?.manga.value;
     final chapter = download.chapter.value;
     final scheme = Theme.of(context).colorScheme;
+    final cardButtons = ref.watch(cardButtonsStateProvider);
 
     Widget card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -749,31 +761,38 @@ class _DownloadCard extends StatelessWidget {
               ],
             ),
           ),
-          // Action buttons
+          // Action buttons (dynamically shown based on settings)
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Pause/Resume
-              _IconBtn(
-                icon: isPaused ? Icons.play_arrow : Icons.pause,
-                tooltip: isPaused ? 'Resume' : 'Pause',
-                color: Colors.orange,
-                onTap: onPauseResume,
-              ),
-              // Retry
-              _IconBtn(
-                icon: Icons.replay,
-                tooltip: 'Retry',
-                color: scheme.primary,
-                onTap: onRetry,
-              ),
-              // Cancel
-              _IconBtn(
-                icon: Icons.close,
-                tooltip: 'Cancel',
-                color: scheme.error,
-                onTap: onCancel,
-              ),
+              if (cardButtons.contains(CardButton.pauseResume))
+                _IconBtn(
+                  icon: isPaused ? Icons.play_arrow : Icons.pause,
+                  tooltip: isPaused ? 'Reprendre' : 'Pause',
+                  color: Colors.orange,
+                  onTap: onPauseResume,
+                ),
+              if (cardButtons.contains(CardButton.retry))
+                _IconBtn(
+                  icon: Icons.replay,
+                  tooltip: 'Réessayer',
+                  color: scheme.primary,
+                  onTap: onRetry,
+                ),
+              if (cardButtons.contains(CardButton.cancel))
+                _IconBtn(
+                  icon: Icons.close,
+                  tooltip: 'Annuler',
+                  color: scheme.error,
+                  onTap: onCancel,
+                ),
+              if (cardButtons.contains(CardButton.delete))
+                _IconBtn(
+                  icon: Icons.delete_outline,
+                  tooltip: 'Supprimer',
+                  color: scheme.error,
+                  onTap: onDelete,
+                ),
             ],
           ),
         ],
@@ -931,6 +950,60 @@ class _SwipeableState extends State<_Swipeable>
         ],
       ),
     );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Pause / Resume All FAB
+// ──────────────────────────────────────────────────────────────
+
+class _PauseResumeAllFab extends ConsumerWidget {
+  final List<Download> entries;
+  final DownloadQueueStateData queueState;
+
+  const _PauseResumeAllFab({
+    required this.entries,
+    required this.queueState,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeIds =
+        entries.map((e) => e.id ?? -1).where((id) => id != -1).toList();
+    final allPaused = activeIds.isNotEmpty &&
+        activeIds.every((id) => queueState.pausedIds.contains(id));
+    final anyActive = activeIds.any((id) => !queueState.pausedIds.contains(id));
+
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    if (allPaused) {
+      // Show Resume All
+      return FloatingActionButton.extended(
+        onPressed: () {
+          ref.read(downloadQueueStateProvider.notifier).resumeAll();
+          ref.read(processDownloadsProvider());
+        },
+        icon: const Icon(Icons.play_circle_outline),
+        label: const Text('Reprendre tout'),
+        backgroundColor: Colors.green.shade700,
+        foregroundColor: Colors.white,
+      );
+    } else if (anyActive) {
+      // Show Pause All
+      return FloatingActionButton.extended(
+        onPressed: () {
+          ref
+              .read(downloadQueueStateProvider.notifier)
+              .pauseAll(activeIds);
+        },
+        icon: const Icon(Icons.pause_circle_outline),
+        label: const Text('Tout mettre en pause'),
+        backgroundColor: Colors.orange.shade700,
+        foregroundColor: Colors.white,
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 

@@ -398,6 +398,76 @@ class PreferredExternalDownloaderState
   }
 }
 
+// ── Per-type simultaneous downloads ───────────────────────────────────────────
+
+@riverpod
+class WatchSimultaneousState extends _$WatchSimultaneousState {
+  @override
+  int build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.watchSimultaneous;
+  }
+
+  Future<void> set(int v) async {
+    state = v;
+    await DownloadSettingsService.instance.setWatchSimultaneous(v);
+  }
+}
+
+@riverpod
+class MangaSimultaneousState extends _$MangaSimultaneousState {
+  @override
+  int build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.mangaSimultaneous;
+  }
+
+  Future<void> set(int v) async {
+    state = v;
+    await DownloadSettingsService.instance.setMangaSimultaneous(v);
+  }
+}
+
+@riverpod
+class NovelSimultaneousState extends _$NovelSimultaneousState {
+  @override
+  int build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.novelSimultaneous;
+  }
+
+  Future<void> set(int v) async {
+    state = v;
+    await DownloadSettingsService.instance.setNovelSimultaneous(v);
+  }
+}
+
+// ── Card buttons ──────────────────────────────────────────────────────────────
+
+@riverpod
+class CardButtonsState extends _$CardButtonsState {
+  @override
+  Set<CardButton> build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.enabledCardButtons;
+  }
+
+  Future<void> set(Set<CardButton> buttons) async {
+    state = buttons;
+    await DownloadSettingsService.instance.setEnabledCardButtons(buttons);
+  }
+
+  Future<void> toggle(CardButton button) async {
+    final next = Set<CardButton>.from(state);
+    if (next.contains(button)) {
+      next.remove(button);
+    } else {
+      next.add(button);
+    }
+    await set(next);
+  }
+}
+
 // ── Swipe Actions ─────────────────────────────────────────────────────────────
 
 @riverpod

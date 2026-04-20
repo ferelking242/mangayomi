@@ -1220,6 +1220,214 @@ abstract class _$PreferredExternalDownloaderState extends $Notifier<String?> {
   }
 }
 
+@ProviderFor(WatchSimultaneousState)
+final watchSimultaneousStateProvider = WatchSimultaneousStateProvider._();
+
+final class WatchSimultaneousStateProvider
+    extends $NotifierProvider<WatchSimultaneousState, int> {
+  WatchSimultaneousStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'watchSimultaneousStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$watchSimultaneousStateHash();
+
+  @$internal
+  @override
+  WatchSimultaneousState create() => WatchSimultaneousState();
+
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$watchSimultaneousStateHash() =>
+    r'a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6';
+
+abstract class _$WatchSimultaneousState extends $Notifier<int> {
+  int build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<int, int>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<int, int>,
+              int,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(MangaSimultaneousState)
+final mangaSimultaneousStateProvider = MangaSimultaneousStateProvider._();
+
+final class MangaSimultaneousStateProvider
+    extends $NotifierProvider<MangaSimultaneousState, int> {
+  MangaSimultaneousStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'mangaSimultaneousStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$mangaSimultaneousStateHash();
+
+  @$internal
+  @override
+  MangaSimultaneousState create() => MangaSimultaneousState();
+
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$mangaSimultaneousStateHash() =>
+    r'b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7';
+
+abstract class _$MangaSimultaneousState extends $Notifier<int> {
+  int build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<int, int>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<int, int>,
+              int,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(NovelSimultaneousState)
+final novelSimultaneousStateProvider = NovelSimultaneousStateProvider._();
+
+final class NovelSimultaneousStateProvider
+    extends $NotifierProvider<NovelSimultaneousState, int> {
+  NovelSimultaneousStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'novelSimultaneousStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$novelSimultaneousStateHash();
+
+  @$internal
+  @override
+  NovelSimultaneousState create() => NovelSimultaneousState();
+
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$novelSimultaneousStateHash() =>
+    r'c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8';
+
+abstract class _$NovelSimultaneousState extends $Notifier<int> {
+  int build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<int, int>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<int, int>,
+              int,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(CardButtonsState)
+final cardButtonsStateProvider = CardButtonsStateProvider._();
+
+final class CardButtonsStateProvider
+    extends $NotifierProvider<CardButtonsState, Set<CardButton>> {
+  CardButtonsStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cardButtonsStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cardButtonsStateHash();
+
+  @$internal
+  @override
+  CardButtonsState create() => CardButtonsState();
+
+  Override overrideWithValue(Set<CardButton> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<CardButton>>(value),
+    );
+  }
+}
+
+String _$cardButtonsStateHash() =>
+    r'd0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9';
+
+abstract class _$CardButtonsState extends $Notifier<Set<CardButton>> {
+  Set<CardButton> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<Set<CardButton>, Set<CardButton>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Set<CardButton>, Set<CardButton>>,
+              Set<CardButton>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(SwipeLeftActionState)
 final swipeLeftActionStateProvider = SwipeLeftActionStateProvider._();
 
