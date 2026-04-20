@@ -74,7 +74,7 @@ class MTorrentServer {
         int port = 0;
         if (Platform.isAndroid || Platform.isIOS) {
           const channel = MethodChannel(
-            'com.kodjodevf.watchtower.libmtorrentserver',
+            'com.watchtower.app.libmtorrentserver',
           );
           port = await channel.invokeMethod('start', {"config": config});
         } else {

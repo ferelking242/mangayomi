@@ -13,6 +13,7 @@ import 'package:watchtower/models/settings.dart';
 import 'package:http/io_client.dart';
 import 'package:watchtower/services/http/rhttp/src/model/settings.dart';
 import 'package:watchtower/utils/log/log.dart';
+import 'package:watchtower/utils/log/logger.dart';
 import 'package:watchtower/services/http/rhttp/rhttp.dart' as rhttp;
 import 'package:watchtower/services/http/doh/doh_resolver.dart';
 import 'package:watchtower/services/http/doh/doh_providers.dart';
@@ -223,17 +224,22 @@ class MCookieManager extends InterceptorContract {
 class LoggerInterceptor extends InterceptorContract {
   LoggerInterceptor(this.showCloudFlareError);
   bool showCloudFlareError;
+
   @override
   Future<BaseRequest> interceptRequest({required BaseRequest request}) async {
-    final content =
-        "----- Request -----\n${request.toString()}\nheaders: ${request.headers.toString()}";
+    final method = request.method;
+    final url = request.url.toString();
+    final content = "$method $url\nheaders: ${request.headers}";
 
     if (kDebugMode || useLogger) {
-      // ignore: avoid_print
-      print(content);
+      print(content); // ignore: avoid_print
       Logger.add(LoggerLevel.info, content);
     }
-
+    AppLogger.log(
+      '$method $url',
+      logLevel: LogLevel.debug,
+      tag: LogTag.network,
+    );
     return request;
   }
 
@@ -241,26 +247,36 @@ class LoggerInterceptor extends InterceptorContract {
   Future<BaseResponse> interceptResponse({
     required BaseResponse response,
   }) async {
-    if (showCloudFlareError) {
-      final cloudflare = isCloudflare(response);
-      final content =
-          "----- Response -----\n${response.request?.method}: ${response.request?.url}, statusCode: ${response.statusCode} ${cloudflare ? "Failed to bypass Cloudflare" : ""}";
+    final method = response.request?.method ?? '?';
+    final url = response.request?.url.toString() ?? '?';
+    final status = response.statusCode;
+    final cloudflare = showCloudFlareError && isCloudflare(response);
+    final suffix = cloudflare ? ' ⚠ Cloudflare' : '';
+    final content = "$method $url → $status$suffix";
 
-      if (kDebugMode || useLogger) {
-        // ignore: avoid_print
-        print(content);
-        Logger.add(LoggerLevel.info, content);
-      }
-      if (cloudflare) {
-        try {
-          botToast(
-            "${response.statusCode} Failed to bypass Cloudflare",
-            hasCloudFlare: cloudflare,
-            url: response.request!.url.toString(),
-          );
-        } catch (e) {
-          throw "Failed to bypass Cloudflare.\n\n\nYou can try to bypass it manually in the webview \n\n\nstatusCode: ${response.statusCode}";
-        }
+    if (kDebugMode || useLogger) {
+      print(content); // ignore: avoid_print
+      Logger.add(LoggerLevel.info, content);
+    }
+    AppLogger.log(
+      content,
+      logLevel: status >= 500
+          ? LogLevel.error
+          : status >= 400
+              ? LogLevel.warning
+              : LogLevel.debug,
+      tag: LogTag.network,
+    );
+
+    if (cloudflare) {
+      try {
+        botToast(
+          "$status Failed to bypass Cloudflare",
+          hasCloudFlare: true,
+          url: url,
+        );
+      } catch (e) {
+        throw "Failed to bypass Cloudflare.\n\n\nYou can try to bypass it manually in the webview \n\n\nstatusCode: $status";
       }
     }
 

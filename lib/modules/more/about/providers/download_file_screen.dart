@@ -167,7 +167,7 @@ class _DownloadFileScreenState extends ConsumerState<DownloadFileScreen> {
 }
 
 class ApkInstaller {
-  static const _platform = MethodChannel('com.kodjodevf.watchtower.apk_install');
+  static const _platform = MethodChannel('com.watchtower.app.apk_install');
   static Future<void> installApk(String filePath) async {
     try {
       await _platform.invokeMethod('installApk', {'filePath': filePath});

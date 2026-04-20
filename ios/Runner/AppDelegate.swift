@@ -10,7 +10,7 @@ import app_links
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
       let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
-      let mChannel = FlutterMethodChannel(name: "com.kodjodevf.watchtower.libmtorrentserver", binaryMessenger: controller.binaryMessenger)
+      let mChannel = FlutterMethodChannel(name: "com.watchtower.app.libmtorrentserver", binaryMessenger: controller.binaryMessenger)
               mChannel.setMethodCallHandler({
                   (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
                   switch call.method {

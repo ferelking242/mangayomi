@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_qjs/flutter_qjs.dart';
 import 'package:http_interceptor/http_interceptor.dart';
 import 'package:watchtower/services/http/m_client.dart';
+import 'package:watchtower/utils/log/logger.dart';
 import 'package:http/http.dart' as http;
 
 class JsHttpClient {
@@ -102,37 +103,66 @@ Future<String> _toHttpResponse(Client client, String method, List args) async {
             ? args[4] as String
             : (args[4] as Map?)?.toMapStringDynamic
       : null;
-  var request = http.Request(method, Uri.parse(url));
-  request.headers.addAll(headers ?? {});
-  if ((request.headers[HttpHeaders.contentTypeHeader]?.contains(
-        "application/json",
-      )) ??
-      false) {
-    request.body = json.encode(body);
+
+  AppLogger.log(
+    '$method $url',
+    logLevel: LogLevel.debug,
+    tag: LogTag.network,
+  );
+
+  try {
+    var request = http.Request(method, Uri.parse(url));
     request.headers.addAll(headers ?? {});
-    http.StreamedResponse response = await client.send(request);
-    final res = Response(
-      "",
-      response.statusCode,
-      request: response.request,
-      headers: response.headers,
-      isRedirect: response.isRedirect,
-      persistentConnection: response.persistentConnection,
-      reasonPhrase: response.reasonPhrase,
+    if ((request.headers[HttpHeaders.contentTypeHeader]?.contains(
+          "application/json",
+        )) ??
+        false) {
+      request.body = json.encode(body);
+      request.headers.addAll(headers ?? {});
+      http.StreamedResponse response = await client.send(request);
+      AppLogger.log(
+        '$method $url → ${response.statusCode}',
+        logLevel: response.statusCode >= 400 ? LogLevel.warning : LogLevel.debug,
+        tag: LogTag.network,
+      );
+      final res = Response(
+        "",
+        response.statusCode,
+        request: response.request,
+        headers: response.headers,
+        isRedirect: response.isRedirect,
+        persistentConnection: response.persistentConnection,
+        reasonPhrase: response.reasonPhrase,
+      );
+      Map<String, dynamic> resMap = res.toJson();
+      resMap["body"] = await response.stream.bytesToString();
+      return jsonEncode(resMap);
+    }
+    final future = switch (method) {
+      "HEAD" => client.head(Uri.parse(url), headers: headers),
+      "GET" => client.get(Uri.parse(url), headers: headers),
+      "POST" => client.post(Uri.parse(url), headers: headers, body: body),
+      "PUT" => client.put(Uri.parse(url), headers: headers, body: body),
+      "DELETE" => client.delete(Uri.parse(url), headers: headers, body: body),
+      _ => client.patch(Uri.parse(url), headers: headers, body: body),
+    };
+    final resp = await future;
+    AppLogger.log(
+      '$method $url → ${resp.statusCode}',
+      logLevel: resp.statusCode >= 400 ? LogLevel.warning : LogLevel.debug,
+      tag: LogTag.network,
     );
-    Map<String, dynamic> resMap = res.toJson();
-    resMap["body"] = await response.stream.bytesToString();
-    return jsonEncode(resMap);
+    return jsonEncode(resp.toJson());
+  } catch (e, st) {
+    AppLogger.log(
+      '$method $url → ERROR: $e',
+      logLevel: LogLevel.error,
+      tag: LogTag.network,
+      error: e,
+      stackTrace: st,
+    );
+    rethrow;
   }
-  final future = switch (method) {
-    "HEAD" => client.head(Uri.parse(url), headers: headers),
-    "GET" => client.get(Uri.parse(url), headers: headers),
-    "POST" => client.post(Uri.parse(url), headers: headers, body: body),
-    "PUT" => client.put(Uri.parse(url), headers: headers, body: body),
-    "DELETE" => client.delete(Uri.parse(url), headers: headers, body: body),
-    _ => client.patch(Uri.parse(url), headers: headers, body: body),
-  };
-  return jsonEncode((await future).toJson());
 }
 
 extension ResponseExtexsion on Response {

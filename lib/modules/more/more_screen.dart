@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watchtower/modules/more/settings/reader/providers/reader_state_provider.dart';
 import 'package:watchtower/modules/more/widgets/downloaded_only_widget.dart';
+import 'package:watchtower/modules/more/widgets/file_explorer_widget.dart';
 import 'package:watchtower/modules/more/widgets/incognito_mode_widget.dart';
 import 'package:watchtower/modules/more/widgets/list_tile_widget.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
@@ -51,6 +52,7 @@ class MoreScreenState extends ConsumerState<MoreScreen> {
             // ),
             const DownloadedOnlyWidget(),
             const IncognitoModeWidget(),
+            const FileExplorerWidget(),
             const Divider(),
             if (hiddenItems.contains("/history"))
               ListTileWidget(

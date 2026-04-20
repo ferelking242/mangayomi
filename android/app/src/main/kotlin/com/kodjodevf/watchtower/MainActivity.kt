@@ -1,4 +1,4 @@
-package com.kodjodevf.watchtower
+package com.watchtower.app
 
 import androidx.annotation.NonNull
 import libmtorrentserver.Libmtorrentserver
@@ -18,7 +18,7 @@ class MainActivity: FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.kodjodevf.watchtower.libmtorrentserver",
+            "com.watchtower.app.libmtorrentserver",
             StandardMethodCodec.INSTANCE,
             flutterEngine.dartExecutor.binaryMessenger.makeBackgroundTaskQueue()
         ).setMethodCallHandler { call, result ->
@@ -40,7 +40,7 @@ class MainActivity: FlutterFragmentActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.kodjodevf.watchtower.apk_install",
+            "com.watchtower.app.apk_install",
             StandardMethodCodec.INSTANCE,
             flutterEngine.dartExecutor.binaryMessenger.makeBackgroundTaskQueue()
         ).setMethodCallHandler { call, result ->

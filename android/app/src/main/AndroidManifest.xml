@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.kodjodevf.watchtower">
+    package="com.watchtower.app">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -57,7 +57,7 @@
         
         <provider
         android:name="androidx.core.content.FileProvider"
-        android:authorities="com.kodjodevf.watchtower.fileprovider"
+        android:authorities="com.watchtower.app.fileprovider"
         android:exported="false"
         android:grantUriPermissions="true">
         <meta-data

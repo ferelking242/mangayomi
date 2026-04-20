@@ -29,7 +29,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.kodjodevf.watchtower"
+    namespace "com.watchtower.app"
     compileSdkVersion 36
     ndkVersion flutter.ndkVersion
 
@@ -47,7 +47,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.kodjodevf.watchtower"
+        applicationId "com.watchtower.app"
         minSdkVersion flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
