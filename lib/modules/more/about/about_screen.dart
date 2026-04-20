@@ -144,14 +144,14 @@ class AboutScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── ZeusDL section ─────────────────────────────────
-                        _SectionLabel(label: 'ZeusDL Engine', cs: cs),
+                        // ── Binary engines (swipeable: Zeus / Aria2) ──────
+                        _SectionLabel(label: 'Moteurs binaires', cs: cs),
                         const SizedBox(height: 8),
-                        _ZeusDLCard(
+                        _BinaryEnginesSection(
                           zeusAsync: zeusAsync,
                           colorScheme: cs,
                           isDark: isDark,
-                          onCheckTap: () =>
+                          onZeusCheckTap: () =>
                               ref.invalidate(zeusLatestReleaseProvider),
                         ),
 
@@ -473,6 +473,284 @@ class _GlassCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Binary Engines Section (swipeable: ZeusDL + Aria2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BinaryEnginesSection extends StatefulWidget {
+  final AsyncValue<ZeusRelease?> zeusAsync;
+  final ColorScheme colorScheme;
+  final bool isDark;
+  final VoidCallback onZeusCheckTap;
+
+  const _BinaryEnginesSection({
+    required this.zeusAsync,
+    required this.colorScheme,
+    required this.isDark,
+    required this.onZeusCheckTap,
+  });
+
+  @override
+  State<_BinaryEnginesSection> createState() => _BinaryEnginesSectionState();
+}
+
+class _BinaryEnginesSectionState extends State<_BinaryEnginesSection> {
+  final _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.colorScheme;
+    return Column(
+      children: [
+        // Swipe hint row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _PageDot(active: _currentPage == 0, cs: cs),
+            const SizedBox(width: 6),
+            _PageDot(active: _currentPage == 1, cs: cs),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 200,
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (p) => setState(() => _currentPage = p),
+            children: [
+              _ZeusDLCard(
+                zeusAsync: widget.zeusAsync,
+                colorScheme: cs,
+                isDark: widget.isDark,
+                onCheckTap: widget.onZeusCheckTap,
+              ),
+              _Aria2Card(
+                colorScheme: cs,
+                isDark: widget.isDark,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Balayez pour voir ${_currentPage == 0 ? 'Aria2 →' : '← ZeusDL'}',
+          style: TextStyle(
+            fontSize: 10,
+            color: cs.onSurface.withOpacity(0.4),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageDot extends StatelessWidget {
+  final bool active;
+  final ColorScheme cs;
+  const _PageDot({required this.active, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: active ? 18 : 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: active ? cs.primary : cs.primary.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(3),
+      ),
+    );
+  }
+}
+
+class _Aria2Card extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final bool isDark;
+
+  const _Aria2Card({required this.colorScheme, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = colorScheme;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  cs.tertiaryContainer.withOpacity(0.25),
+                  cs.secondaryContainer.withOpacity(0.15),
+                ]
+              : [
+                  cs.tertiaryContainer.withOpacity(0.45),
+                  cs.secondaryContainer.withOpacity(0.3),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: cs.tertiary.withOpacity(isDark ? 0.2 : 0.15),
+          width: 0.9,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cs.tertiary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: cs.tertiary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: cs.tertiary.withOpacity(0.2),
+                    width: 0.8,
+                  ),
+                ),
+                child: Icon(
+                  Icons.account_tree_rounded,
+                  size: 22,
+                  color: cs.tertiary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Aria2',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Stable',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Moteur de téléchargement multi-connexion haute performance',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: cs.onSurface.withOpacity(0.55),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Features
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: const [
+              _Aria2Feature(icon: Icons.speed_outlined, label: 'Multi-connexions'),
+              _Aria2Feature(
+                  icon: Icons.pause_circle_outline, label: 'Reprise'),
+              _Aria2Feature(
+                  icon: Icons.link_outlined, label: 'Magnet / Direct'),
+              _Aria2Feature(icon: Icons.code_outlined, label: 'Open source'),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 14),
+                label: const Text('aria2.github.io', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(foregroundColor: cs.tertiary),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://aria2.github.io'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Aria2Feature extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _Aria2Feature({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: cs.tertiary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: cs.tertiary.withOpacity(0.8)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: cs.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

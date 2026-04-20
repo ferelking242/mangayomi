@@ -489,9 +489,8 @@ Future<void> downloadChapter(
           }
         }
 
-        // Auto-fallback to ZeusDL on internal failure
-        if (caughtError != null &&
-            downloadMode == DownloadMode.internalFallback) {
+        // Fallback to ZeusDL on internal failure (legacy — kept for ZeusDL mode)
+        if (caughtError != null && false) {
           final zeusEngine = ZeusDlEngine(
             url: videoUrl,
             outputPath: m3u8Downloader!.fileName,

@@ -44,8 +44,17 @@ class DartExtensionService implements ExtensionService {
     _interpreter = D4rt();
     RegistrerBridge.registerBridge(_interpreter!);
 
-    final code =
-        source.sourceCode!.replaceAll('Client(source)', 'Client()');
+    // Normalize Client(...) calls so they work with the bridged constructor
+    final code = source.sourceCode!
+        .replaceAllMapped(
+          RegExp(r'Client\(([^)]*)\)'),
+          (m) {
+            final arg = m.group(1)?.trim() ?? '';
+            if (arg.isEmpty) return 'Client()';
+            // If it looks like a MSource variable, keep it; otherwise strip
+            return arg == 'source' ? 'Client(source)' : 'Client()';
+          },
+        );
     _interpreter!.execute(
       source: _injectMProvider(code),
       positionalArgs: [source.toMSource()],
@@ -55,8 +64,9 @@ class DartExtensionService implements ExtensionService {
   /// Inserts [_mProviderStub] after the last import statement so that the
   /// extension class can freely do `class Xyz extends MProvider`.
   static String _injectMProvider(String extensionCode) {
+    // Handle both single and double-quoted imports
     final importPattern = RegExp(
-      r"^import\s+'[^']+'\s*;[ \t]*$",
+      r"""^import\s+['"][^'"]+['"]\s*;[ \t]*$""",
       multiLine: true,
     );
     final matches = importPattern.allMatches(extensionCode).toList();

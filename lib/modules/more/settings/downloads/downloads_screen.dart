@@ -1,13 +1,15 @@
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:numberpicker/numberpicker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:watchtower/l10n/generated/app_localizations.dart';
 import 'package:watchtower/modules/library/providers/file_scanner.dart';
 import 'package:watchtower/modules/more/settings/downloads/providers/downloads_state_provider.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
 import 'package:watchtower/services/download_manager/download_settings_service.dart';
 import 'package:watchtower/utils/extensions/build_context_extensions.dart';
-import 'package:numberpicker/numberpicker.dart';
 
 class DownloadsScreen extends ConsumerStatefulWidget {
   const DownloadsScreen({super.key});
@@ -35,29 +37,54 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final saveAsCBZArchiveState = ref.watch(saveAsCBZArchiveStateProvider);
-    final deleteDownloadAfterReading =
-        ref.watch(deleteDownloadAfterReadingStateProvider);
-    final onlyOnWifiState = ref.watch(onlyOnWifiStateProvider);
-    final concurrentDownloads = ref.watch(concurrentDownloadsStateProvider);
-    final localFolders = ref.watch(localFoldersStateProvider);
-    final downloadMode = ref.watch(downloadModeStateProvider);
-    final mangaConnections = ref.watch(mangaConnectionsStateProvider);
-    final animeConnections = ref.watch(animeConnectionsStateProvider);
-    final swipeLeft = ref.watch(swipeLeftActionStateProvider);
-    final swipeRight = ref.watch(swipeRightActionStateProvider);
     final l10n = l10nLocalizations(context)!;
     final scheme = Theme.of(context).colorScheme;
+    final localFolders = ref.watch(localFoldersStateProvider);
+    final swipeLeft = ref.watch(swipeLeftActionStateProvider);
+    final swipeRight = ref.watch(swipeRightActionStateProvider);
+    final concurrentDownloads = ref.watch(concurrentDownloadsStateProvider);
+
+    // Watch tab state
+    final downloadMode = ref.watch(downloadModeStateProvider);
+    final animeConnections = ref.watch(animeConnectionsStateProvider);
+    final watchOnlyOnWifi = ref.watch(watchOnlyOnWifiStateProvider);
+    final autoDownloadNewEpisodes =
+        ref.watch(autoDownloadNewEpisodesStateProvider);
+    final downloadFillerEpisodes =
+        ref.watch(downloadFillerEpisodesStateProvider);
+    final anticipatoryDownloadWatch =
+        ref.watch(anticipatoryDownloadWatchStateProvider);
+    final alwaysUseExternalDownloader =
+        ref.watch(alwaysUseExternalDownloaderStateProvider);
+    final preferredExternalDownloader =
+        ref.watch(preferredExternalDownloaderStateProvider);
+
+    // Manga tab state
+    final mangaConnections = ref.watch(mangaConnectionsStateProvider);
+    final archiveFormat = ref.watch(mangaArchiveFormatStateProvider);
+    final mangaOnlyOnWifi = ref.watch(mangaOnlyOnWifiStateProvider);
+    final autoDownloadNewChapters =
+        ref.watch(autoDownloadNewChaptersStateProvider);
+    final deleteAfterMarkedRead = ref.watch(deleteAfterMarkedReadStateProvider);
+    final allowDeletingBookmarked =
+        ref.watch(allowDeletingBookmarkedChaptersStateProvider);
+    final anticipatoryDownloadRead =
+        ref.watch(anticipatoryDownloadReadStateProvider);
+
+    // Novel tab state
+    final novelConnections = ref.watch(novelConnectionsStateProvider);
+    final novelOnlyOnWifi = ref.watch(novelOnlyOnWifiStateProvider);
+
+    // Shared state
+    final speedLimit = ref.watch(speedLimitKBsStateProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.downloads)),
+      appBar: AppBar(title: const Text('Téléchargements')),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─────────────────────────────────────────
-            // TÉLÉCHARGEUR PAR MÉDIA — 3 ONGLETS
-            // ─────────────────────────────────────────
+            // ─── Téléchargeur par média — 3 onglets ───────────────────────
             _SectionHeader(title: 'Téléchargeur par média'),
             Container(
               decoration: BoxDecoration(
@@ -70,12 +97,12 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                   TabBar(
                     controller: _tabController,
                     tabs: const [
+                      Tab(icon: Icon(Icons.play_circle_outline), text: 'Watch'),
                       Tab(
-                        icon: Icon(Icons.play_circle_outline),
-                        text: 'Watch',
-                      ),
-                      Tab(icon: Icon(Icons.menu_book_outlined), text: 'Manga'),
-                      Tab(icon: Icon(Icons.auto_stories_outlined), text: 'Novel'),
+                          icon: Icon(Icons.menu_book_outlined), text: 'Manga'),
+                      Tab(
+                          icon: Icon(Icons.auto_stories_outlined),
+                          text: 'Novel'),
                     ],
                     labelColor: scheme.primary,
                     unselectedLabelColor: scheme.onSurfaceVariant,
@@ -83,38 +110,129 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                     dividerColor: Colors.transparent,
                   ),
                   SizedBox(
-                    height: 340,
+                    height: 520,
                     child: TabBarView(
                       controller: _tabController,
-                      physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        // ── Watch (Anime) tab ───────────────────────────
-                        _AnimeTab(
+                        // ── Watch tab ──────────────────────────────────────
+                        _WatchTab(
                           downloadMode: downloadMode,
                           animeConnections: animeConnections,
-                          onModeChanged: (mode) =>
-                              ref.read(downloadModeStateProvider.notifier).set(mode),
+                          watchOnlyOnWifi: watchOnlyOnWifi,
+                          autoDownloadNewEpisodes: autoDownloadNewEpisodes,
+                          downloadFillerEpisodes: downloadFillerEpisodes,
+                          anticipatoryDownload: anticipatoryDownloadWatch,
+                          alwaysUseExternal: alwaysUseExternalDownloader,
+                          preferredExternal: preferredExternalDownloader,
+                          onModeChanged: (m) =>
+                              ref
+                                  .read(downloadModeStateProvider.notifier)
+                                  .set(m),
                           onConnectionsChanged: (v) =>
-                              ref.read(animeConnectionsStateProvider.notifier).set(v),
-                        ),
-                        // ── Manga tab ───────────────────────────────────
-                        _MangaTab(
-                          mangaConnections: mangaConnections,
-                          saveAsCBZ: saveAsCBZArchiveState,
-                          deleteAfterReading: deleteDownloadAfterReading,
-                          onConnectionsChanged: (v) =>
-                              ref.read(mangaConnectionsStateProvider.notifier).set(v),
-                          onCBZChanged: (v) =>
-                              ref.read(saveAsCBZArchiveStateProvider.notifier).set(v),
-                          onDeleteChanged: (v) =>
+                              ref
+                                  .read(animeConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onWifiChanged: (v) =>
+                              ref
+                                  .read(watchOnlyOnWifiStateProvider.notifier)
+                                  .set(v),
+                          onAutoEpisodesChanged: (v) =>
                               ref
                                   .read(
-                                    deleteDownloadAfterReadingStateProvider.notifier,
+                                    autoDownloadNewEpisodesStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                          onFillerChanged: (v) =>
+                              ref
+                                  .read(
+                                    downloadFillerEpisodesStateProvider.notifier,
+                                  )
+                                  .set(v),
+                          onAnticipatoryChanged: (v) =>
+                              ref
+                                  .read(
+                                    anticipatoryDownloadWatchStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                          onAlwaysExternalChanged: (v) =>
+                              ref
+                                  .read(
+                                    alwaysUseExternalDownloaderStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                          onPreferredExternalChanged: (v) =>
+                              ref
+                                  .read(
+                                    preferredExternalDownloaderStateProvider
+                                        .notifier,
                                   )
                                   .set(v),
                         ),
-                        // ── Novel tab ───────────────────────────────────
-                        const _NovelTab(),
+                        // ── Manga tab ──────────────────────────────────────
+                        _MangaTab(
+                          mangaConnections: mangaConnections,
+                          archiveFormat: archiveFormat,
+                          mangaOnlyOnWifi: mangaOnlyOnWifi,
+                          autoDownloadNewChapters: autoDownloadNewChapters,
+                          deleteAfterMarkedRead: deleteAfterMarkedRead,
+                          allowDeletingBookmarked: allowDeletingBookmarked,
+                          anticipatoryDownloadRead: anticipatoryDownloadRead,
+                          onConnectionsChanged: (v) =>
+                              ref
+                                  .read(mangaConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onArchiveFormatChanged: (f) =>
+                              ref
+                                  .read(mangaArchiveFormatStateProvider.notifier)
+                                  .set(f),
+                          onWifiChanged: (v) =>
+                              ref
+                                  .read(mangaOnlyOnWifiStateProvider.notifier)
+                                  .set(v),
+                          onAutoChaptersChanged: (v) =>
+                              ref
+                                  .read(
+                                    autoDownloadNewChaptersStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                          onDeleteAfterReadChanged: (v) =>
+                              ref
+                                  .read(
+                                    deleteAfterMarkedReadStateProvider.notifier,
+                                  )
+                                  .set(v),
+                          onAllowDeletingBookmarkedChanged: (v) =>
+                              ref
+                                  .read(
+                                    allowDeletingBookmarkedChaptersStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                          onAnticipatoryReadChanged: (v) =>
+                              ref
+                                  .read(
+                                    anticipatoryDownloadReadStateProvider
+                                        .notifier,
+                                  )
+                                  .set(v),
+                        ),
+                        // ── Novel tab ──────────────────────────────────────
+                        _NovelTab(
+                          novelConnections: novelConnections,
+                          novelOnlyOnWifi: novelOnlyOnWifi,
+                          onConnectionsChanged: (v) =>
+                              ref
+                                  .read(novelConnectionsStateProvider.notifier)
+                                  .set(v),
+                          onWifiChanged: (v) =>
+                              ref
+                                  .read(novelOnlyOnWifiStateProvider.notifier)
+                                  .set(v),
+                        ),
                       ],
                     ),
                   ),
@@ -122,39 +240,81 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
               ),
             ),
 
-            // ─────────────────────────────────────────
-            // GÉNÉRAL
-            // ─────────────────────────────────────────
-            _SectionHeader(title: 'Général'),
-            SwitchListTile(
-              value: onlyOnWifiState,
-              title: Text(l10n.only_on_wifi),
-              onChanged: (value) {
-                ref.read(onlyOnWifiStateProvider.notifier).set(value);
-              },
-            ),
+            // ─── Téléchargements (options globales) ───────────────────────
+            _SectionHeader(title: 'Téléchargements'),
+
+            // Concurrent downloads
             ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Nombre max. de téléchargements'),
+              subtitle: Text(
+                '$concurrentDownloads téléchargement(s) simultané(s)',
+                style: TextStyle(fontSize: 11, color: context.secondaryColor),
+              ),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => _showNumberPickerDialog(
                 context,
-                title: context.l10n.concurrent_downloads,
+                title: 'Téléchargements simultanés',
                 current: concurrentDownloads,
                 min: 1,
                 max: 10,
                 onSave: (v) =>
                     ref.read(concurrentDownloadsStateProvider.notifier).set(v),
               ),
-              title: Text(context.l10n.concurrent_downloads),
+            ),
+
+            // Speed limit
+            ListTile(
+              leading: const Icon(Icons.speed_outlined),
+              title: const Text('Limite de vitesse'),
               subtitle: Text(
-                '$concurrentDownloads chapitre(s) en parallèle',
+                speedLimit == 0
+                    ? 'Désactivée'
+                    : '${speedLimit} KB/s',
                 style: TextStyle(fontSize: 11, color: context.secondaryColor),
               ),
               trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showSpeedLimitDialog(context, speedLimit),
             ),
 
-            // ─────────────────────────────────────────
-            // ACTIONS DE BALAYAGE
-            // ─────────────────────────────────────────
-            _SectionHeader(title: 'Actions de balayage (file de téléchargement)'),
+            // ─── Suppression des chapitres ────────────────────────────────
+            _SectionHeader(title: 'Suppression des chapitres'),
+            ListTile(
+              leading: const Icon(Icons.auto_delete_outlined),
+              title: const Text('Suppression automatique après lecture'),
+              subtitle: Text(
+                ref.watch(deleteDownloadAfterReadingStateProvider)
+                    ? 'Activée'
+                    : 'Désactivée',
+                style: TextStyle(fontSize: 11, color: context.secondaryColor),
+              ),
+              trailing: Switch(
+                value: ref.watch(deleteDownloadAfterReadingStateProvider),
+                onChanged: (v) =>
+                    ref
+                        .read(deleteDownloadAfterReadingStateProvider.notifier)
+                        .set(v),
+              ),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.bookmark_outlined),
+              title: const Text('Autoriser la suppression des chapitres marqués'),
+              subtitle: const Text(
+                'Permet de supprimer les chapitres avec un marque-page',
+                style: TextStyle(fontSize: 11),
+              ),
+              value: ref.watch(allowDeletingBookmarkedChaptersStateProvider),
+              onChanged: (v) =>
+                  ref
+                      .read(
+                        allowDeletingBookmarkedChaptersStateProvider.notifier,
+                      )
+                      .set(v),
+            ),
+
+            // ─── Actions de balayage ──────────────────────────────────────
+            _SectionHeader(
+                title: 'Actions de balayage (file de téléchargement)'),
             _SwipeActionTile(
               label: 'Balayer à gauche',
               icon: Icons.swipe_left_outlined,
@@ -170,9 +330,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                   ref.read(swipeRightActionStateProvider.notifier).set(v),
             ),
 
-            // ─────────────────────────────────────────
-            // DOSSIERS LOCAUX
-            // ─────────────────────────────────────────
+            // ─── Dossiers locaux ──────────────────────────────────────────
             _SectionHeader(title: context.l10n.local_folder),
             ListTile(
               onTap: () async => ref.read(scanLocalLibraryProvider.future),
@@ -206,14 +364,15 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
                   ),
                   FutureBuilder(
                     future: getLocalLibrary(),
-                    builder: (context, snapshot) => snapshot.data?.path != null
-                        ? _buildLocalFolder(
-                            l10n,
-                            localFolders,
-                            snapshot.data!.path,
-                            isDefault: true,
-                          )
-                        : Container(),
+                    builder: (context, snapshot) =>
+                        snapshot.data?.path != null
+                            ? _buildLocalFolder(
+                                l10n,
+                                localFolders,
+                                snapshot.data!.path,
+                                isDefault: true,
+                              )
+                            : Container(),
                   ),
                   ...localFolders.map(
                     (e) => _buildLocalFolder(l10n, localFolders, e),
@@ -284,6 +443,37 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSpeedLimitDialog(BuildContext context, int current) {
+    final options = [0, 128, 256, 512, 1024, 2048, 5120, 10240];
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Limite de vitesse'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: options.map((kb) {
+            final label = kb == 0
+                ? 'Désactivée'
+                : kb < 1024
+                    ? '$kb KB/s'
+                    : '${(kb / 1024).toStringAsFixed(0)} MB/s';
+            return RadioListTile<int>(
+              title: Text(label),
+              value: kb,
+              groupValue: current,
+              onChanged: (v) {
+                if (v != null) {
+                  ref.read(speedLimitKBsStateProvider.notifier).set(v);
+                  Navigator.pop(ctx);
+                }
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -488,20 +678,44 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Anime tab
+// Watch Tab
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _AnimeTab extends StatelessWidget {
+class _WatchTab extends StatelessWidget {
   final DownloadMode downloadMode;
   final int animeConnections;
+  final bool watchOnlyOnWifi;
+  final bool autoDownloadNewEpisodes;
+  final bool downloadFillerEpisodes;
+  final bool anticipatoryDownload;
+  final bool alwaysUseExternal;
+  final String? preferredExternal;
   final void Function(DownloadMode) onModeChanged;
   final void Function(int) onConnectionsChanged;
+  final void Function(bool) onWifiChanged;
+  final void Function(bool) onAutoEpisodesChanged;
+  final void Function(bool) onFillerChanged;
+  final void Function(bool) onAnticipatoryChanged;
+  final void Function(bool) onAlwaysExternalChanged;
+  final void Function(String?) onPreferredExternalChanged;
 
-  const _AnimeTab({
+  const _WatchTab({
     required this.downloadMode,
     required this.animeConnections,
+    required this.watchOnlyOnWifi,
+    required this.autoDownloadNewEpisodes,
+    required this.downloadFillerEpisodes,
+    required this.anticipatoryDownload,
+    required this.alwaysUseExternal,
+    required this.preferredExternal,
     required this.onModeChanged,
     required this.onConnectionsChanged,
+    required this.onWifiChanged,
+    required this.onAutoEpisodesChanged,
+    required this.onFillerChanged,
+    required this.onAnticipatoryChanged,
+    required this.onAlwaysExternalChanged,
+    required this.onPreferredExternalChanged,
   });
 
   @override
@@ -512,6 +726,7 @@ class _AnimeTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Engine selector
           ...DownloadMode.values.map(
             (mode) => _EngineCard(
               mode: mode,
@@ -519,14 +734,112 @@ class _AnimeTab extends StatelessWidget {
               onTap: () => onModeChanged(mode),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _ConnectionsTile(
             label: 'Connexions HLS simultanées',
-            subtitle: 'Segments M3U8 téléchargés en parallèle par épisode',
+            subtitle: 'Segments téléchargés en parallèle par épisode',
             value: animeConnections,
             icon: Icons.cable_outlined,
             onChanged: onConnectionsChanged,
             scheme: scheme,
+          ),
+          const Divider(height: 16),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.wifi_outlined),
+            title: const Text('Wi-Fi uniquement'),
+            subtitle: const Text(
+              'Télécharger uniquement via Wi-Fi',
+              style: TextStyle(fontSize: 11),
+            ),
+            value: watchOnlyOnWifi,
+            onChanged: onWifiChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.new_releases_outlined),
+            title: const Text('Télécharger les nouveaux épisodes'),
+            value: autoDownloadNewEpisodes,
+            onChanged: onAutoEpisodesChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.filter_list_outlined),
+            title: const Text('Autoriser les épisodes filler'),
+            value: downloadFillerEpisodes,
+            onChanged: onFillerChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.fast_forward_outlined),
+            title: const Text('Téléchargement anticipé (visionnage)'),
+            subtitle: const Text(
+              'Pré-télécharge pendant le visionnage si les 2 eps suivants sont dispo',
+              style: TextStyle(fontSize: 10),
+            ),
+            value: anticipatoryDownload,
+            onChanged: onAnticipatoryChanged,
+          ),
+          const Divider(height: 16),
+          // External downloader section
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.open_in_new_outlined),
+            title: const Text('Toujours utiliser un téléchargeur externe'),
+            value: alwaysUseExternal,
+            onChanged: onAlwaysExternalChanged,
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.apps_outlined),
+            title: const Text('App de téléchargement préférée'),
+            subtitle: Text(
+              preferredExternal ?? 'Aucune',
+              style: const TextStyle(fontSize: 11),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showExternalDownloaderPicker(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExternalDownloaderPicker(BuildContext context) {
+    final apps = _ExternalDownloaderRegistry.all;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('App de téléchargement préférée'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              RadioListTile<String?>(
+                title: const Text('Aucune'),
+                value: null,
+                groupValue: preferredExternal,
+                onChanged: (v) {
+                  onPreferredExternalChanged(null);
+                  Navigator.pop(ctx);
+                },
+              ),
+              ...apps.map((app) => _ExternalAppTile(
+                    app: app,
+                    selected: preferredExternal == app.id,
+                    onSelect: () {
+                      onPreferredExternalChanged(app.id);
+                      Navigator.pop(ctx);
+                    },
+                  )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
           ),
         ],
       ),
@@ -535,24 +848,40 @@ class _AnimeTab extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Manga tab
+// Manga Tab
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MangaTab extends StatelessWidget {
   final int mangaConnections;
-  final bool saveAsCBZ;
-  final bool deleteAfterReading;
+  final MangaArchiveFormat archiveFormat;
+  final bool mangaOnlyOnWifi;
+  final bool autoDownloadNewChapters;
+  final bool deleteAfterMarkedRead;
+  final bool allowDeletingBookmarked;
+  final bool anticipatoryDownloadRead;
   final void Function(int) onConnectionsChanged;
-  final void Function(bool) onCBZChanged;
-  final void Function(bool) onDeleteChanged;
+  final void Function(MangaArchiveFormat) onArchiveFormatChanged;
+  final void Function(bool) onWifiChanged;
+  final void Function(bool) onAutoChaptersChanged;
+  final void Function(bool) onDeleteAfterReadChanged;
+  final void Function(bool) onAllowDeletingBookmarkedChanged;
+  final void Function(bool) onAnticipatoryReadChanged;
 
   const _MangaTab({
     required this.mangaConnections,
-    required this.saveAsCBZ,
-    required this.deleteAfterReading,
+    required this.archiveFormat,
+    required this.mangaOnlyOnWifi,
+    required this.autoDownloadNewChapters,
+    required this.deleteAfterMarkedRead,
+    required this.allowDeletingBookmarked,
+    required this.anticipatoryDownloadRead,
     required this.onConnectionsChanged,
-    required this.onCBZChanged,
-    required this.onDeleteChanged,
+    required this.onArchiveFormatChanged,
+    required this.onWifiChanged,
+    required this.onAutoChaptersChanged,
+    required this.onDeleteAfterReadChanged,
+    required this.onAllowDeletingBookmarkedChanged,
+    required this.onAnticipatoryReadChanged,
   });
 
   @override
@@ -572,23 +901,63 @@ class _MangaTab extends StatelessWidget {
             scheme: scheme,
           ),
           const SizedBox(height: 4),
+          // Archive format row
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.folder_zip_outlined),
+            title: const Text('Archiver en…'),
+            trailing: _ArchiveFormatSelector(
+              value: archiveFormat,
+              onChanged: onArchiveFormatChanged,
+            ),
+          ),
+          const Divider(height: 16),
           SwitchListTile(
-            value: saveAsCBZ,
-            title: const Text('Sauvegarder en CBZ'),
+            dense: true,
+            secondary: const Icon(Icons.wifi_outlined),
+            title: const Text('Wi-Fi uniquement'),
             subtitle: const Text(
-              'Archive les chapitres au format CBZ après téléchargement',
+              'Télécharger uniquement via Wi-Fi',
               style: TextStyle(fontSize: 11),
             ),
-            onChanged: onCBZChanged,
+            value: mangaOnlyOnWifi,
+            onChanged: onWifiChanged,
           ),
           SwitchListTile(
-            value: deleteAfterReading,
+            dense: true,
+            secondary: const Icon(Icons.new_releases_outlined),
+            title: const Text('Télécharger les nouveaux chapitres'),
+            value: autoDownloadNewChapters,
+            onChanged: onAutoChaptersChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.auto_delete_outlined),
             title: const Text('Supprimer après lecture'),
             subtitle: const Text(
               'Supprime le chapitre une fois lu',
               style: TextStyle(fontSize: 11),
             ),
-            onChanged: onDeleteChanged,
+            value: deleteAfterMarkedRead,
+            onChanged: onDeleteAfterReadChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.bookmark_outlined),
+            title: const Text('Supprimer même les chapitres marqués'),
+            value: allowDeletingBookmarked,
+            onChanged: onAllowDeletingBookmarkedChanged,
+          ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.fast_forward_outlined),
+            title: const Text('Téléchargement anticipé (lecture)'),
+            subtitle: const Text(
+              'Fonctionne si le chapitre actuel et suivant sont déjà téléchargés',
+              style: TextStyle(fontSize: 10),
+            ),
+            value: anticipatoryDownloadRead,
+            onChanged: onAnticipatoryReadChanged,
           ),
         ],
       ),
@@ -597,42 +966,270 @@ class _MangaTab extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Novel tab
+// Novel Tab
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _NovelTab extends StatelessWidget {
-  const _NovelTab();
+  final int novelConnections;
+  final bool novelOnlyOnWifi;
+  final void Function(int) onConnectionsChanged;
+  final void Function(bool) onWifiChanged;
+
+  const _NovelTab({
+    required this.novelConnections,
+    required this.novelOnlyOnWifi,
+    required this.onConnectionsChanged,
+    required this.onWifiChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(10),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.auto_stories_outlined,
-            size: 48,
-            color: scheme.primary.withOpacity(0.7),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Téléchargeur interne',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: scheme.onSurface,
+          // Info card
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_stories_outlined,
+                    color: scheme.primary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Téléchargement interne via l\'extension source. Chapitres sauvegardés en HTML.',
+                    style: TextStyle(
+                        fontSize: 11, color: scheme.onPrimaryContainer),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Les chapitres de novel sont téléchargés via l\'extension source '
-            'et sauvegardés en HTML. Aucun choix de moteur requis.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+          _ConnectionsTile(
+            label: 'Téléchargements simultanés',
+            subtitle: 'Chapitres téléchargés en parallèle',
+            value: novelConnections,
+            icon: Icons.download_outlined,
+            onChanged: onConnectionsChanged,
+            scheme: scheme,
+          ),
+          const SizedBox(height: 4),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.wifi_outlined),
+            title: const Text('Wi-Fi uniquement'),
+            subtitle: const Text(
+              'Télécharger uniquement via Wi-Fi',
+              style: TextStyle(fontSize: 11),
+            ),
+            value: novelOnlyOnWifi,
+            onChanged: onWifiChanged,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// External Downloader Registry
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _ExternalDownloaderApp {
+  final String id;
+  final String name;
+  final String? androidPackage;
+  final String? playStoreUrl;
+  final String? appStoreUrl;
+  final String? altStoreUrl;
+  final String? pcUrl;
+  final String description;
+
+  const _ExternalDownloaderApp({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.androidPackage,
+    this.playStoreUrl,
+    this.appStoreUrl,
+    this.altStoreUrl,
+    this.pcUrl,
+  });
+}
+
+class _ExternalDownloaderRegistry {
+  static const all = [
+    _ExternalDownloaderApp(
+      id: 'adm',
+      name: 'ADM — Advanced Download Manager',
+      description: 'Gestionnaire de téléchargement multi-thread pour Android.',
+      androidPackage: 'com.dv.adm',
+      playStoreUrl:
+          'https://play.google.com/store/apps/details?id=com.dv.adm',
+      appStoreUrl: null,
+    ),
+    _ExternalDownloaderApp(
+      id: '1dm',
+      name: '1DM — 1Downloader',
+      description: 'Téléchargeur rapide avec support HLS et DASH pour Android.',
+      androidPackage: 'idm.internet.download.manager',
+      playStoreUrl:
+          'https://play.google.com/store/apps/details?id=idm.internet.download.manager',
+      appStoreUrl:
+          'https://apps.apple.com/app/1downloader-download-manager/id1451985776',
+    ),
+    _ExternalDownloaderApp(
+      id: 'fdm',
+      name: 'FDM — Free Download Manager',
+      description: 'Téléchargeur multiplateforme gratuit et open-source.',
+      androidPackage: 'org.freedownloadmanager.fdm',
+      playStoreUrl:
+          'https://play.google.com/store/apps/details?id=org.freedownloadmanager.fdm',
+      appStoreUrl: null,
+      pcUrl: 'https://www.freedownloadmanager.org/',
+    ),
+    _ExternalDownloaderApp(
+      id: 'idm',
+      name: 'IDM — Internet Download Manager',
+      description: 'Téléchargeur haute vitesse avec reprise (Windows).',
+      pcUrl: 'https://www.internetdownloadmanager.com/',
+    ),
+    _ExternalDownloaderApp(
+      id: 'jdownloader',
+      name: 'JDownloader',
+      description: 'Téléchargeur open-source multiplateforme très populaire.',
+      pcUrl: 'https://jdownloader.org/',
+    ),
+    _ExternalDownloaderApp(
+      id: 'motrix',
+      name: 'Motrix',
+      description: 'Téléchargeur Aria2 open-source avec interface moderne.',
+      pcUrl: 'https://motrix.app/',
+    ),
+  ];
+}
+
+class _ExternalAppTile extends StatelessWidget {
+  final _ExternalDownloaderApp app;
+  final bool selected;
+  final VoidCallback onSelect;
+
+  const _ExternalAppTile({
+    required this.app,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Radio<bool>(
+        value: true,
+        groupValue: selected,
+        onChanged: (_) => onSelect(),
+      ),
+      title: Text(app.name, style: const TextStyle(fontSize: 13)),
+      subtitle: Text(app.description, style: const TextStyle(fontSize: 11)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (app.playStoreUrl != null)
+            IconButton(
+              icon: const Icon(Icons.android_outlined, size: 18),
+              tooltip: 'Google Play',
+              onPressed: () =>
+                  launchUrl(Uri.parse(app.playStoreUrl!)),
+            ),
+          if (app.appStoreUrl != null)
+            IconButton(
+              icon: const Icon(Icons.apple_outlined, size: 18),
+              tooltip: 'App Store',
+              onPressed: () =>
+                  launchUrl(Uri.parse(app.appStoreUrl!)),
+            ),
+          if (app.pcUrl != null)
+            IconButton(
+              icon: const Icon(Icons.computer_outlined, size: 18),
+              tooltip: 'Site officiel',
+              onPressed: () => launchUrl(Uri.parse(app.pcUrl!)),
+            ),
+        ],
+      ),
+      onTap: onSelect,
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Archive Format Selector
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _ArchiveFormatSelector extends StatelessWidget {
+  final MangaArchiveFormat value;
+  final void Function(MangaArchiveFormat) onChanged;
+
+  const _ArchiveFormatSelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () => _showPicker(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: scheme.primary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value.label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: scheme.primary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, color: scheme.primary, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Format d\'archive'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: MangaArchiveFormat.values.map((f) {
+            return RadioListTile<MangaArchiveFormat>(
+              title: Text(f.label),
+              value: f,
+              groupValue: value,
+              onChanged: (v) {
+                if (v != null) {
+                  onChanged(v);
+                  Navigator.pop(ctx);
+                }
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -678,12 +1275,10 @@ class _EngineCard extends StatelessWidget {
     switch (mode) {
       case DownloadMode.internalDownloader:
         return Icons.download_outlined;
-      case DownloadMode.internalFallback:
-        return Icons.auto_fix_high_outlined;
       case DownloadMode.zeusDl:
         return Icons.bolt_outlined;
-      case DownloadMode.auto:
-        return Icons.smart_toy_outlined;
+      case DownloadMode.aria2:
+        return Icons.account_tree_outlined;
     }
   }
 
@@ -767,7 +1362,7 @@ class _EngineCard extends StatelessWidget {
                         fontSize: 10,
                         color: scheme.onSurfaceVariant,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

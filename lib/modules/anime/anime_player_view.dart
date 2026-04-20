@@ -686,6 +686,7 @@ class _AnimeStreamPageState extends riv.ConsumerState<AnimeStreamPage>
     }
     final dir = await provider.getMpvDirectory();
     String scriptsDir = path.join(dir!.path, 'scripts');
+    await Directory(scriptsDir).create(recursive: true);
     final mpvFile = File('$scriptsDir/init_custom_buttons.lua');
     final content = StringBuffer();
     content.writeln("""local lua_modules = mp.find_config_file('scripts')
@@ -910,7 +911,7 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
       _setPlaybackSpeed(ref.read(defaultPlayBackSpeedStateProvider));
       if (ref.read(enableAniSkipStateProvider)) _initAniSkip();
     });
-    _initCustomButton();
+    _initCustomButton().catchError((_) {});
     discordRpc?.showChapterDetails(ref, widget.episode);
     _currentPosition.addListener(_updateRpcTimestamp);
     _subDelayController.addListener(_onSubDelayChanged);
@@ -1215,9 +1216,9 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
           return vid;
         })
         .toList()
-        .where((element) => element.title!.isNotEmpty)
+        .where((element) => (element.title ?? '').isNotEmpty)
         .toList();
-    videoSubtitle.sort((a, b) => a.title!.compareTo(b.title!));
+    videoSubtitle.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
     hasSubtitleTrack.call(videoSubtitle.isNotEmpty);
     videoSubtitle.insert(
       0,

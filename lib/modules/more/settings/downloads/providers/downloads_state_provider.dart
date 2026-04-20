@@ -138,9 +138,24 @@ class DownloadModeState extends _$DownloadModeState {
   }
 }
 
+// ── Manga archive format ──────────────────────────────────────────────────────
+
+@riverpod
+class MangaArchiveFormatState extends _$MangaArchiveFormatState {
+  @override
+  MangaArchiveFormat build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.mangaArchiveFormat;
+  }
+
+  Future<void> set(MangaArchiveFormat format) async {
+    state = format;
+    await DownloadSettingsService.instance.setMangaArchiveFormat(format);
+  }
+}
+
 // ── Per-type connection settings ─────────────────────────────────────────────
 
-/// Concurrent images downloaded per manga chapter (within-chapter parallelism).
 @riverpod
 class MangaConnectionsState extends _$MangaConnectionsState {
   @override
@@ -155,7 +170,6 @@ class MangaConnectionsState extends _$MangaConnectionsState {
   }
 }
 
-/// Concurrent M3U8 segments downloaded per anime episode.
 @riverpod
 class AnimeConnectionsState extends _$AnimeConnectionsState {
   @override
@@ -167,6 +181,220 @@ class AnimeConnectionsState extends _$AnimeConnectionsState {
   Future<void> set(int value) async {
     state = value;
     await DownloadSettingsService.instance.setAnimeConnections(value);
+  }
+}
+
+@riverpod
+class NovelConnectionsState extends _$NovelConnectionsState {
+  @override
+  int build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.novelConnections;
+  }
+
+  Future<void> set(int value) async {
+    state = value;
+    await DownloadSettingsService.instance.setNovelConnections(value);
+  }
+}
+
+// ── Per-type Only on WiFi ─────────────────────────────────────────────────────
+
+@riverpod
+class WatchOnlyOnWifiState extends _$WatchOnlyOnWifiState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.watchOnlyOnWifi;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setWatchOnlyOnWifi(v);
+  }
+}
+
+@riverpod
+class MangaOnlyOnWifiState extends _$MangaOnlyOnWifiState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.mangaOnlyOnWifi;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setMangaOnlyOnWifi(v);
+  }
+}
+
+@riverpod
+class NovelOnlyOnWifiState extends _$NovelOnlyOnWifiState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.novelOnlyOnWifi;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setNovelOnlyOnWifi(v);
+  }
+}
+
+// ── Speed limit ───────────────────────────────────────────────────────────────
+
+@riverpod
+class SpeedLimitKBsState extends _$SpeedLimitKBsState {
+  @override
+  int build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.speedLimitKBs;
+  }
+
+  Future<void> set(int v) async {
+    state = v;
+    await DownloadSettingsService.instance.setSpeedLimitKBs(v);
+  }
+}
+
+// ── Auto-download ─────────────────────────────────────────────────────────────
+
+@riverpod
+class AutoDownloadNewChaptersState extends _$AutoDownloadNewChaptersState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.autoDownloadNewChapters;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setAutoDownloadNewChapters(v);
+  }
+}
+
+@riverpod
+class AutoDownloadNewEpisodesState extends _$AutoDownloadNewEpisodesState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.autoDownloadNewEpisodes;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setAutoDownloadNewEpisodes(v);
+  }
+}
+
+// ── Anticipatory download ─────────────────────────────────────────────────────
+
+@riverpod
+class AnticipatoryDownloadWatchState extends _$AnticipatoryDownloadWatchState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.anticipatoryDownloadWatch;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setAnticipatoryDownloadWatch(v);
+  }
+}
+
+@riverpod
+class AnticipatoryDownloadReadState extends _$AnticipatoryDownloadReadState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.anticipatoryDownloadRead;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setAnticipatoryDownloadRead(v);
+  }
+}
+
+// ── Filler episodes ───────────────────────────────────────────────────────────
+
+@riverpod
+class DownloadFillerEpisodesState extends _$DownloadFillerEpisodesState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.downloadFillerEpisodes;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setDownloadFillerEpisodes(v);
+  }
+}
+
+// ── Delete settings ───────────────────────────────────────────────────────────
+
+@riverpod
+class DeleteAfterMarkedReadState extends _$DeleteAfterMarkedReadState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.deleteAfterMarkedRead;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setDeleteAfterMarkedRead(v);
+  }
+}
+
+@riverpod
+class AllowDeletingBookmarkedChaptersState
+    extends _$AllowDeletingBookmarkedChaptersState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.allowDeletingBookmarkedChapters;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance
+        .setAllowDeletingBookmarkedChapters(v);
+  }
+}
+
+// ── External downloader ───────────────────────────────────────────────────────
+
+@riverpod
+class AlwaysUseExternalDownloaderState
+    extends _$AlwaysUseExternalDownloaderState {
+  @override
+  bool build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.alwaysUseExternalDownloader;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await DownloadSettingsService.instance.setAlwaysUseExternalDownloader(v);
+  }
+}
+
+@riverpod
+class PreferredExternalDownloaderState
+    extends _$PreferredExternalDownloaderState {
+  @override
+  String? build() {
+    DownloadSettingsService.instance.load();
+    return DownloadSettingsService.instance.preferredExternalDownloader;
+  }
+
+  Future<void> set(String? v) async {
+    state = v;
+    await DownloadSettingsService.instance.setPreferredExternalDownloader(v);
   }
 }
 
@@ -217,18 +445,14 @@ class DownloadQueueState extends _$DownloadQueueState {
     state = state.copyWith(pausedIds: set);
   }
 
-  /// Toggle pause and trigger real engine pause/resume.
   void togglePause(int downloadId) {
     final set = Set<int>.from(state.pausedIds);
     final wasPaused = set.contains(downloadId);
     if (wasPaused) {
       set.remove(downloadId);
-      // Resume the actual engine (ZeusDL: SIGCONT; internal: no-op here,
-      // caller must re-invoke processDownloads to restart the batch).
       ActiveDownloadRegistry.resume(downloadId);
     } else {
       set.add(downloadId);
-      // Pause the actual engine (ZeusDL: SIGSTOP; internal: cancel batch).
       ActiveDownloadRegistry.pause(downloadId);
     }
     state = state.copyWith(pausedIds: set);

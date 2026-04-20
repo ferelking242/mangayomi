@@ -5,6 +5,7 @@ import 'package:isar_community/isar.dart';
 import 'package:watchtower/main.dart';
 import 'package:watchtower/models/chapter.dart';
 import 'package:watchtower/models/download.dart';
+import 'package:watchtower/models/manga.dart';
 import 'package:watchtower/modules/manga/detail/widgets/custom_floating_action_btn.dart';
 import 'package:watchtower/modules/manga/download/providers/download_provider.dart';
 import 'package:watchtower/modules/more/settings/downloads/providers/downloads_state_provider.dart';
@@ -13,11 +14,32 @@ import 'package:watchtower/services/download_manager/download_settings_service.d
 import 'package:watchtower/utils/extensions/chapter.dart';
 import 'package:watchtower/utils/global_style.dart';
 
-class DownloadQueueScreen extends ConsumerWidget {
+class DownloadQueueScreen extends ConsumerStatefulWidget {
   const DownloadQueueScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DownloadQueueScreen> createState() =>
+      _DownloadQueueScreenState();
+}
+
+class _DownloadQueueScreenState extends ConsumerState<DownloadQueueScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = l10nLocalizations(context);
     final queueState = ref.watch(downloadQueueStateProvider);
     final swipeLeft = ref.watch(swipeLeftActionStateProvider);
@@ -53,30 +75,25 @@ class DownloadQueueScreen extends ConsumerWidget {
           });
         }
 
-        if (entries.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: Text(l10n!.download_queue)),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.download_done_outlined,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.no_downloads,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+        // Split into 3 tabs by ItemType
+        final watchEntries = entries
+            .where(
+              (d) =>
+                  d.chapter.value?.manga.value?.itemType == ItemType.anime,
+            )
+            .toList();
+        final mangaEntries = entries
+            .where(
+              (d) =>
+                  d.chapter.value?.manga.value?.itemType == ItemType.manga,
+            )
+            .toList();
+        final novelEntries = entries
+            .where(
+              (d) =>
+                  d.chapter.value?.manga.value?.itemType == ItemType.novel,
+            )
+            .toList();
 
         final allQueueLength = entries.length;
 
@@ -94,6 +111,53 @@ class DownloadQueueScreen extends ConsumerWidget {
                       fontSize: 12,
                       color: Theme.of(context).textTheme.bodySmall!.color,
                     ),
+                  ),
+                ),
+              ],
+            ),
+            bottom: TabBar(
+              controller: _tabController,
+              tabs: [
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.play_circle_outline, size: 16),
+                      const SizedBox(width: 4),
+                      const Text('Watch'),
+                      if (watchEntries.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        _TabBadge(count: watchEntries.length),
+                      ],
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.menu_book_outlined, size: 16),
+                      const SizedBox(width: 4),
+                      const Text('Manga'),
+                      if (mangaEntries.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        _TabBadge(count: mangaEntries.length),
+                      ],
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.auto_stories_outlined, size: 16),
+                      const SizedBox(width: 4),
+                      const Text('Novel'),
+                      if (novelEntries.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        _TabBadge(count: novelEntries.length),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -159,68 +223,55 @@ class DownloadQueueScreen extends ConsumerWidget {
               ),
             ],
           ),
-          body: GroupedListView<Download, String>(
-            elements: entries,
-            groupBy: (element) =>
-                element.chapter.value?.manga.value?.source ?? "",
-            groupSeparatorBuilder: (String groupByValue) {
-              final sourceQueueLength = entries
-                  .where(
-                    (element) =>
-                        (element.chapter.value?.manga.value?.source ?? "") ==
-                        groupByValue,
-                  )
-                  .length;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-                child: Text(
-                  '$groupByValue ($sourceQueueLength)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              );
-            },
-            itemBuilder: (context, Download element) {
-              final isPaused =
-                  queueState.pausedIds.contains(element.id ?? -1);
-              final engine =
-                  queueState.engineMap[element.id ?? -1] ?? 'HLS';
-              final retryCount =
-                  queueState.retryCounts[element.id ?? -1] ?? 0;
-              final progress = element.total != null && element.total! > 0
-                  ? (element.succeeded ?? 0) / element.total!
-                  : 0.0;
-
-              return _DownloadCard(
-                download: element,
-                isPaused: isPaused,
-                engine: engine,
-                retryCount: retryCount,
-                progress: progress,
-                swipeLeftAction: swipeLeft,
-                swipeRightAction: swipeRight,
-                onPauseResume: () {
-                  ref
-                      .read(downloadQueueStateProvider.notifier)
-                      .togglePause(element.id ?? -1);
-                },
-                onCancel: () =>
-                    _cancelDownload(element, context),
-                onDelete: () =>
-                    _deleteDownload(element, context),
-                onRetry: () =>
-                    _retryDownload(element, ref, context),
-                entries: entries,
-              );
-            },
-            itemComparator: (item1, item2) =>
-                (item1.chapter.value?.manga.value?.source ?? "").compareTo(
-              item2.chapter.value?.manga.value?.source ?? "",
-            ),
-            order: GroupedListOrder.DESC,
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _DownloadTabList(
+                entries: watchEntries,
+                allEntries: entries,
+                emptyIcon: Icons.play_circle_outline,
+                emptyLabel: 'Aucun téléchargement Watch',
+                queueState: queueState,
+                swipeLeft: swipeLeft,
+                swipeRight: swipeRight,
+                onPauseResume: (e) => ref
+                    .read(downloadQueueStateProvider.notifier)
+                    .togglePause(e.id ?? -1),
+                onCancel: (e) => _cancelDownload(e, context),
+                onDelete: (e) => _deleteDownload(e, context),
+                onRetry: (e) => _retryDownload(e, ref, context),
+              ),
+              _DownloadTabList(
+                entries: mangaEntries,
+                allEntries: entries,
+                emptyIcon: Icons.menu_book_outlined,
+                emptyLabel: 'Aucun téléchargement Manga',
+                queueState: queueState,
+                swipeLeft: swipeLeft,
+                swipeRight: swipeRight,
+                onPauseResume: (e) => ref
+                    .read(downloadQueueStateProvider.notifier)
+                    .togglePause(e.id ?? -1),
+                onCancel: (e) => _cancelDownload(e, context),
+                onDelete: (e) => _deleteDownload(e, context),
+                onRetry: (e) => _retryDownload(e, ref, context),
+              ),
+              _DownloadTabList(
+                entries: novelEntries,
+                allEntries: entries,
+                emptyIcon: Icons.auto_stories_outlined,
+                emptyLabel: 'Aucun téléchargement Novel',
+                queueState: queueState,
+                swipeLeft: swipeLeft,
+                swipeRight: swipeRight,
+                onPauseResume: (e) => ref
+                    .read(downloadQueueStateProvider.notifier)
+                    .togglePause(e.id ?? -1),
+                onCancel: (e) => _cancelDownload(e, context),
+                onDelete: (e) => _deleteDownload(e, context),
+                onRetry: (e) => _retryDownload(e, ref, context),
+              ),
+            ],
           ),
           floatingActionButton: CustomFloatingActionBtn(
             isExtended: false,
@@ -313,6 +364,145 @@ class DownloadQueueScreen extends ConsumerWidget {
       );
       ref.read(processDownloadsProvider());
     }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Tab Badge
+// ──────────────────────────────────────────────────────────────
+
+class _TabBadge extends StatelessWidget {
+  final int count;
+  const _TabBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Download Tab List
+// ──────────────────────────────────────────────────────────────
+
+class _DownloadTabList extends StatelessWidget {
+  final List<Download> entries;
+  final List<Download> allEntries;
+  final IconData emptyIcon;
+  final String emptyLabel;
+  final DownloadQueueStateData queueState;
+  final SwipeAction swipeLeft;
+  final SwipeAction swipeRight;
+  final void Function(Download) onPauseResume;
+  final void Function(Download) onCancel;
+  final void Function(Download) onDelete;
+  final void Function(Download) onRetry;
+
+  const _DownloadTabList({
+    required this.entries,
+    required this.allEntries,
+    required this.emptyIcon,
+    required this.emptyLabel,
+    required this.queueState,
+    required this.swipeLeft,
+    required this.swipeRight,
+    required this.onPauseResume,
+    required this.onCancel,
+    required this.onDelete,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              emptyIcon,
+              size: 56,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              emptyLabel,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GroupedListView<Download, String>(
+      elements: entries,
+      groupBy: (element) => element.chapter.value?.manga.value?.source ?? "",
+      groupSeparatorBuilder: (String groupByValue) {
+        final sourceQueueLength = entries
+            .where(
+              (element) =>
+                  (element.chapter.value?.manga.value?.source ?? "") ==
+                  groupByValue,
+            )
+            .length;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+          child: Text(
+            '$groupByValue ($sourceQueueLength)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        );
+      },
+      itemBuilder: (context, Download element) {
+        final isPaused = queueState.pausedIds.contains(element.id ?? -1);
+        final engine = queueState.engineMap[element.id ?? -1] ?? 'HLS';
+        final retryCount = queueState.retryCounts[element.id ?? -1] ?? 0;
+        final progress = element.total != null && element.total! > 0
+            ? (element.succeeded ?? 0) / element.total!
+            : 0.0;
+
+        return _DownloadCard(
+          download: element,
+          isPaused: isPaused,
+          engine: engine,
+          retryCount: retryCount,
+          progress: progress,
+          swipeLeftAction: swipeLeft,
+          swipeRightAction: swipeRight,
+          onPauseResume: () => onPauseResume(element),
+          onCancel: () => onCancel(element),
+          onDelete: () => onDelete(element),
+          onRetry: () => onRetry(element),
+          entries: allEntries,
+        );
+      },
+      itemComparator: (item1, item2) =>
+          (item1.chapter.value?.manga.value?.source ?? "").compareTo(
+        item2.chapter.value?.manga.value?.source ?? "",
+      ),
+      order: GroupedListOrder.DESC,
+    );
   }
 }
 

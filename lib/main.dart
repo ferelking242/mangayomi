@@ -117,8 +117,10 @@ void main(List<String> args) async {
       unawaited(_postLaunchInit(storage));
     },
     (Object error, StackTrace stack) {
+      final msg = error.toString();
+      if (AppLogger.shouldSuppressImageError(msg)) return;
       AppLogger.log(
-        'runZonedGuarded error: $error\n$stack',
+        'runZonedGuarded error: $msg\n$stack',
         logLevel: LogLevel.error,
       );
     },
@@ -165,7 +167,7 @@ class _MyAppState extends ConsumerState<MyApp>
     customDns = ref.read(customDnsStateProvider);
     _checkTrackerRefresh();
     _initDeepLinks();
-    _setupMpvConfig();
+    _setupMpvConfig().catchError((_) {});
     unawaited(ref.read(scanLocalLibraryProvider.future));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
