@@ -83,7 +83,7 @@ dependencies:
       url: https://github.com/kodjodevf/desktop_webview_window.git
       path: packages/desktop_webview_window
       ref: main
-  volume_controller: ^4.0.0
+  volume_controller: ^3.4.4
   screen_brightness: ^2.1.1
   flutter_html: ^3.0.0
   convert: ^3.1.2
