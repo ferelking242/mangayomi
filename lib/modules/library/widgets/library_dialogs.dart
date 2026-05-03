@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
@@ -261,7 +261,8 @@ void showImportLocalDialog(BuildContext context, ItemType itemType) {
     ItemType.manga => ".zip, .cbz",
     ItemType.anime => ".mp4, .mkv, .avi, and more",
     ItemType.novel => ".epub",
-    _ => "",
+    ItemType.music => "",
+    ItemType.game => "",
   };
   bool isLoading = false;
   bool splitChapters = true;
