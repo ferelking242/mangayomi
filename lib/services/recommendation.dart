@@ -93,7 +93,8 @@ String _mediaType(ItemType itemType) {
     ItemType.manga => "MANGA",
     ItemType.anime => "ANIME",
     ItemType.novel => "NOVEL",
-    _ => "MANGA",
+    ItemType.music => "MANGA",
+    ItemType.game => "MANGA",
   };
 }
 
@@ -102,7 +103,8 @@ List<String> _fillerType(ItemType itemType) {
     ItemType.manga => ["MANGA"],
     ItemType.anime => ["movie", "ona", "tv"],
     ItemType.novel => ["NOVEL"],
-    _ => ["MANGA"],
+    ItemType.music => ["MANGA"],
+    ItemType.game => ["MANGA"],
   };
 }
 
