@@ -58,6 +58,8 @@ class _WindowManager {
   Future<bool> isMaximized() async => false;
   Future<void> setTitle(String title) async {}
   Future<void> setMinimumSize(Size size) async {}
+  Future<void> setAlwaysOnTop(bool alwaysOnTop) async {}
+  Future<bool> isAlwaysOnTop() async => false;
   Future<void> close() async {}
 }
 
