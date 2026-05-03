@@ -27,7 +27,8 @@ Future importArchivesFromFile(
         ItemType.manga => ['cbz', 'zip'],
         ItemType.anime => ['mp4', 'mov', 'avi', 'flv', 'wmv', 'mpeg', 'mkv'],
         ItemType.novel => ['epub'],
-        _ => [],
+        ItemType.music => [],
+        ItemType.game => [],
       },
     );
     if (result != null) {
