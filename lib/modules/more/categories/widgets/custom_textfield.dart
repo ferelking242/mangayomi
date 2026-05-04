@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Category;
 import 'package:watchtower/models/category.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
 

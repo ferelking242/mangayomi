@@ -1,6 +1,6 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:isar_community/isar.dart';
 import 'package:watchtower/eval/model/source_preference.dart';
 import 'package:watchtower/main.dart';

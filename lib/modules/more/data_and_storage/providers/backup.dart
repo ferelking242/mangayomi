@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
 import 'package:archive/archive_io.dart';
 import 'package:watchtower/eval/model/m_bridge.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Category;
 import 'package:isar_community/isar.dart';
 import 'package:watchtower/eval/model/source_preference.dart';
 import 'package:watchtower/main.dart';
