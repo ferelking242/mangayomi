@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 import 'package:watchtower/utils/log/log.dart';
 
 class JsLibs {

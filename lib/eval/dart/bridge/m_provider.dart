@@ -1,6 +1,6 @@
 import 'package:d4rt/d4rt.dart' hide Logger;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 import 'package:watchtower/eval/model/m_bridge.dart';
 import 'package:watchtower/modules/browse/extension/providers/extension_preferences_providers.dart';
 import 'package:watchtower/utils/extensions/string_extensions.dart';

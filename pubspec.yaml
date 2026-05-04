@@ -117,8 +117,6 @@ dependency_overrides:
       url: https://github.com/ThexXTURBOXx/flutter_web_auth_2.git
       ref: 3.x-without-v1
       path: flutter_web_auth_2
-  flutter_qjs:
-    path: web_stubs/flutter_qjs
   local_auth:
     path: web_stubs/local_auth
   permission_handler:

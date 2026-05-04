@@ -1,4 +1,4 @@
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 import 'package:watchtower/models/source.dart';
 import 'package:watchtower/modules/browse/extension/providers/extension_preferences_providers.dart';
 

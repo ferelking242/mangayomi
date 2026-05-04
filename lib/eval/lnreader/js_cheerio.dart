@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 import 'package:watchtower/utils/extensions/dom_extensions.dart';

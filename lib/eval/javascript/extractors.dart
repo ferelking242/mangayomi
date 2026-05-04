@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 import 'package:watchtower/eval/model/m_bridge.dart';
 import 'package:watchtower/eval/javascript/http.dart';
 import 'package:watchtower/models/video.dart';

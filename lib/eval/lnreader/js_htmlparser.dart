@@ -1,4 +1,4 @@
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:watchtower/stubs/js_runtime_exports.dart';
 
 class JsHtmlParser {
   late JavascriptRuntime runtime;
