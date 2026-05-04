@@ -32,6 +32,31 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch pseudom CSSParser for dart2js
+        run: |
+          FILE=$(find ~/.pub-cache -name "CSSParser.dart" -path "*/pseudom*" 2>/dev/null | head -1)
+          if [ -n "$FILE" ]; then
+            python3 - <<'PYEOF'
+import re, sys
+path = "$FILE"
+with open(path) as f:
+    content = f.read()
+# Replace 64-bit ANTLR token-set bitmasks with 0 so dart2js can compile.
+# This makes the set-membership tests always return false (conservative parse),
+# which is acceptable for a design-preview web build.
+content = re.sub(
+    r'\(\(1 << _la\) & -?[0-9]{10,}\)',
+    '((1 << _la) & 0)',
+    content
+)
+with open(path, 'w') as f:
+    f.write(content)
+print("Patched", path)
+PYEOF
+          else
+            echo "pseudom CSSParser.dart not found, skipping patch"
+          fi
+
       - name: Build Web
         run: flutter build web --no-tree-shake-icons --release
 
