@@ -73,6 +73,8 @@ void main(List<String> args) async {
         final msg = details.exceptionAsString();
         // Suppress broken image/asset loading errors (e.g. extension icons 404)
         if (AppLogger.shouldSuppressImageError(msg)) return;
+        // Always print to browser console on web so we can diagnose issues
+        debugPrint('[FlutterError] $msg\n${details.stack}');
         FlutterError.presentError(details);
         AppLogger.log(
           'FlutterError: $msg\n${details.stack}',
@@ -85,6 +87,8 @@ void main(List<String> args) async {
         final msg = error.toString();
         // Suppress image loading errors from polluting logs
         if (AppLogger.shouldSuppressImageError(msg)) return true;
+        // Always print to browser console on web so we can diagnose issues
+        debugPrint('[PlatformDispatcher] $msg\n$stack');
         AppLogger.log(
           'PlatformDispatcher error: $msg\n$stack',
           logLevel: LogLevel.error,
@@ -140,6 +144,8 @@ void main(List<String> args) async {
     (Object error, StackTrace stack) {
       final msg = error.toString();
       if (AppLogger.shouldSuppressImageError(msg)) return;
+      // Always print to browser console on web so we can diagnose issues
+      debugPrint('[runZonedGuarded] $msg\n$stack');
       AppLogger.log(
         'runZonedGuarded error: $msg\n$stack',
         logLevel: LogLevel.error,
@@ -188,8 +194,8 @@ class _MyAppState extends ConsumerState<MyApp>
     }
     initializeDateFormatting();
     customDns = ref.read(customDnsStateProvider);
-    _checkTrackerRefresh();
-    _initDeepLinks();
+    if (!kIsWeb) _checkTrackerRefresh();
+    if (!kIsWeb) _initDeepLinks();
     if (!kIsWeb) _setupMpvConfig().catchError((_) {});
     unawaited(ref.read(scanLocalLibraryProvider.future));
 
