@@ -46,7 +46,8 @@ import 'package:watchtower/modules/more/settings/appearance/providers/theme_prov
 import 'package:watchtower/modules/library/providers/file_scanner.dart';
 import 'package:watchtower/modules/more/settings/security/providers/security_state_provider.dart';
 import 'package:watchtower/modules/more/settings/security/app_lock_screen.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart'
+    if (dart.library.js_interop) 'utils/media_kit_stub.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:path/path.dart' as p;
