@@ -2,6 +2,7 @@ import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.
 import 'dart:math';
 
 import 'package:draggable_menu/draggable_menu.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:watchtower/router/router.dart';
@@ -124,7 +125,7 @@ Future<void> customDraggableTabBar({
                   }
                 : 0;
             return Scaffold(
-              backgroundColor: Platform.isLinux ? null : Colors.transparent,
+              backgroundColor: (!kIsWeb && Platform.isLinux) ? null : Colors.transparent,
               body: Container(
                 width: context.width(1) - width,
                 decoration: BoxDecoration(

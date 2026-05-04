@@ -1,4 +1,5 @@
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
@@ -90,7 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _refreshPermissionStatus() async {
-    if (!Platform.isAndroid && !Platform.isIOS) {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
       // Desktop: nothing to ask for; treat as granted so the user can continue.
       setState(() {
         _storageGranted = true;

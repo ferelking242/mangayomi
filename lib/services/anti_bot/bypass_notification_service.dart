@@ -1,4 +1,5 @@
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:watchtower/utils/log/logger.dart';
@@ -20,7 +21,7 @@ class BypassNotificationService {
 
   Future<void> init() async {
     if (_initialized) return;
-    if (!Platform.isAndroid && !Platform.isIOS) {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
       _initialized = true;
       return;
     }
@@ -37,7 +38,7 @@ class BypassNotificationService {
       );
       await _plugin.initialize(initSettings);
 
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         await _plugin
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
@@ -57,7 +58,7 @@ class BypassNotificationService {
               AndroidFlutterLocalNotificationsPlugin
             >()
             ?.requestNotificationsPermission();
-      } else if (Platform.isIOS) {
+      } else if (!kIsWeb && Platform.isIOS) {
         await _plugin
             .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin
@@ -79,7 +80,7 @@ class BypassNotificationService {
     required String url,
     int id = 9900,
   }) async {
-    if (!Platform.isAndroid && !Platform.isIOS) return;
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
     if (!_initialized) await init();
     final host = _hostFrom(url);
     try {

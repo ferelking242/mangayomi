@@ -1,5 +1,6 @@
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:watchtower/modules/anime/widgets/custom_track_shape.dart';
 import 'package:media_kit/media_kit.dart';

@@ -3,6 +3,7 @@ import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.
 import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:watchtower/stubs/js_ffi_exports.dart';
@@ -73,8 +74,8 @@ class _NovelWebViewState extends ConsumerState<NovelWebView>
   double offset = 0;
   double maxOffset = 0;
   int fontSize = 14;
-  bool isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-  bool get _ttsSupported => !Platform.isLinux;
+  bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows);
+  bool get _ttsSupported => kIsWeb || !Platform.isLinux;
 
   final Stopwatch _readingStopwatch = Stopwatch();
 
@@ -945,12 +946,12 @@ class _NovelWebViewState extends ConsumerState<NovelWebView>
   }
 
   Widget _appBar() {
-    if (!_isView && Platform.isIOS) {
+    if (!_isView && !kIsWeb && Platform.isIOS) {
       return const SizedBox.shrink();
     }
     final fullScreenReader = ref.watch(fullScreenReaderStateProvider);
     double height = _isView
-        ? Platform.isIOS
+        ? (!kIsWeb && Platform.isIOS)
               ? 120
               : !fullScreenReader && !isDesktop
               ? 55
@@ -1032,7 +1033,7 @@ class _NovelWebViewState extends ConsumerState<NovelWebView>
                       'sourceId': source.id.toString(),
                       'title': chapter.name!,
                     };
-                    if (Platform.isLinux) {
+                    if (!kIsWeb && Platform.isLinux) {
                       final urll = Uri.parse(url);
                       if (!await launchUrl(
                         urll,
@@ -1060,7 +1061,7 @@ class _NovelWebViewState extends ConsumerState<NovelWebView>
   }
 
   Widget _bottomBar(BackgroundColor backgroundColor) {
-    if (!_isView && Platform.isIOS) {
+    if (!_isView && !kIsWeb && Platform.isIOS) {
       return const SizedBox.shrink();
     }
     bool hasPrevChapter =

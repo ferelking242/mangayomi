@@ -28,7 +28,7 @@ class StorageProvider {
   factory StorageProvider() => _instance;
 
   Future<bool> requestPermission() async {
-    if (!Platform.isAndroid) return true;
+    if (kIsWeb || !Platform.isAndroid) return true;
     Permission permission = Permission.manageExternalStorage;
     if (await permission.isGranted) return true;
     if (await permission.request().isGranted) {
@@ -49,14 +49,14 @@ class StorageProvider {
 
   Future<Directory?> getDefaultDirectory() async {
     Directory? directory;
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       directory = Directory("/storage/emulated/0/Watchtower/");
     } else {
       final dir = await getApplicationDocumentsDirectory();
       // The documents dir in iOS is already named "Watchtower".
       // Appending "Watchtower" to the documents dir would create
       // unnecessarily nested Watchtower/Watchtower/ folder.
-      if (Platform.isIOS) return dir;
+      if (!kIsWeb && Platform.isIOS) return dir;
       directory = Directory(path.join(dir.path, 'Watchtower'));
     }
     return directory;
@@ -128,7 +128,7 @@ class StorageProvider {
     } catch (e) {
       debugPrint("Could not get downloadLocation from Isar settings: $e");
     }
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       directory = Directory(
         dPath.isEmpty ? "/storage/emulated/0/Watchtower/" : "$dPath/",
       );
@@ -138,7 +138,7 @@ class StorageProvider {
       // The documents dir in iOS is already named "Watchtower".
       // Appending "Watchtower" to the documents dir would create
       // unnecessarily nested Watchtower/Watchtower/ folder.
-      if (Platform.isIOS) return Directory(p);
+      if (!kIsWeb && Platform.isIOS) return Directory(p);
       directory = Directory(path.join(p, 'Watchtower'));
     }
     return directory;
@@ -183,8 +183,8 @@ class StorageProvider {
   Future<Directory?> getDatabaseDirectory() async {
     final dir = await getApplicationDocumentsDirectory();
     String dbDir;
-    if (Platform.isAndroid) return dir;
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isAndroid) return dir;
+    if (!kIsWeb && Platform.isIOS) {
       // Put the database files inside /databases like on Windows, Linux
       // So they are not just in the app folders root dir
       dbDir = path.join(dir.path, 'databases');
@@ -197,7 +197,7 @@ class StorageProvider {
 
   Future<Directory?> getGalleryDirectory() async {
     String gPath;
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       gPath = "/storage/emulated/0/Pictures/Watchtower/";
     } else {
       gPath = path.join((await getDirectory())!.path, 'Pictures');

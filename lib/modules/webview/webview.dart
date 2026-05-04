@@ -342,7 +342,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    if (Platform.isLinux || Platform.isWindows) {
+    if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
       _runWebViewDesktop();
     } else {
       setState(() => isNotWebviewWindow = true);
@@ -352,7 +352,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
   @override
   void dispose() {
     _animCtrl.dispose();
-    if (Platform.isLinux) {
+    if (!kIsWeb && Platform.isLinux) {
       _desktopWebview?.close();
     } else if (browser != null) {
       if (browser!.isOpened()) browser!.close();
@@ -367,7 +367,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
     String? ua = ref.read(userAgentStateProvider);
     if (ua == defaultUserAgent) ua = null;
 
-    if (Platform.isLinux) {
+    if (!kIsWeb && Platform.isLinux) {
       _desktopWebview = await WebviewWindow.create();
       final timer = Timer.periodic(const Duration(seconds: 1), (t) async {
         try {
@@ -694,7 +694,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
   @override
   Widget build(BuildContext context) {
     // Desktop: simple screen
-    if (!isNotWebviewWindow && (Platform.isLinux || Platform.isWindows)) {
+    if (!isNotWebviewWindow && !kIsWeb && (Platform.isLinux || Platform.isWindows)) {
       return Scaffold(
         appBar: AppBar(
           title: Text(
@@ -769,7 +769,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
                     ),
                   ),
                   // ── WebView body ────────────────────────────────────────
-                  body: !Platform.isWindows
+                  body: kIsWeb || !Platform.isWindows
                       ? WillPopScope(
                           onWillPop: () async {
                             if (await _webViewController?.canGoBack() ?? false) {
@@ -786,7 +786,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
                               isInspectable: kDebugMode,
                               useShouldOverrideUrlLoading: true,
                               useShouldInterceptRequest:
-                                  _adBlockEnabled && Platform.isAndroid,
+                                  _adBlockEnabled && !kIsWeb && Platform.isAndroid,
                               userAgent:
                                   ref.read(userAgentStateProvider) ==
                                           defaultUserAgent
@@ -857,7 +857,7 @@ class _MangaWebViewState extends ConsumerState<MangaWebView>
                               }
                               return NavigationActionPolicy.ALLOW;
                             },
-                            shouldInterceptRequest: Platform.isAndroid
+                            shouldInterceptRequest: (!kIsWeb && Platform.isAndroid)
                                 ? (c, request) async {
                                     final url = request.url.toString();
                                     if (_adBlockEnabled && _isAdDomain(url)) {
