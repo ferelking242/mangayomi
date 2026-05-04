@@ -150,16 +150,20 @@ void main(List<String> args) async {
 
 Future<void> _postLaunchInit(StorageProvider storage) async {
   await AppLogger.init();
-  unawaited(MDownloader.initializeIsolatePool(poolSize: 6));
+  if (!kIsWeb) {
+    unawaited(MDownloader.initializeIsolatePool(poolSize: 6));
+  }
   // Hive is already initialized + nav_display opened in main() before runApp.
   // Nothing more to do here for Hive setup.
   if (!kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows)) {
     discordRpc = DiscordRPC(applicationId: "1395040506677039157");
     await discordRpc?.initialize();
   }
-  await storage.deleteBtDirectory();
-  await cfResolutionWebviewServer();
-  unawaited(BypassNotificationService.instance.init());
+  if (!kIsWeb) {
+    await storage.deleteBtDirectory();
+    await cfResolutionWebviewServer();
+    unawaited(BypassNotificationService.instance.init());
+  }
 }
 
 class MyApp extends ConsumerStatefulWidget {
