@@ -1,0 +1,54 @@
+name: Build Flutter Web
+
+  on:
+    push:
+      branches: [ main, master ]
+    pull_request:
+      branches: [ main, master ]
+    workflow_dispatch:
+
+  jobs:
+    build-web:
+      name: Build Web
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Set up Flutter (latest stable)
+          uses: subosito/flutter-action@v2
+          with:
+            channel: stable
+            cache: true
+
+        - name: Cache pub packages
+          uses: actions/cache@v4
+          with:
+            path: ~/.pub-cache
+            key: ${{ runner.os }}-pub-web-${{ hashFiles('**/pubspec.lock') }}
+            restore-keys: ${{ runner.os }}-pub-web-
+
+        - name: Install dependencies
+          run: flutter pub get
+
+        - name: Build Web
+          run: |
+            flutter build web \
+              --no-tree-shake-icons \
+              --release
+
+        - name: Show build size
+          run: |
+            if [ -d "build/web" ]; then
+              echo "Web build size: $(du -sh build/web | cut -f1)"
+              ls -la build/web/
+            fi
+
+        - name: Upload web artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: watchtower-web
+            path: build/web/
+            retention-days: 7
+  
