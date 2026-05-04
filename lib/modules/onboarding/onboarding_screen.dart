@@ -14,6 +14,7 @@ Future<File> _markerFile() async {
 }
 
 Future<bool> onboardingIsComplete() async {
+  if (kIsWeb) return true;
   try {
     return (await _markerFile()).existsSync();
   } catch (_) {

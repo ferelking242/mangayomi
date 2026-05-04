@@ -48,7 +48,7 @@ jobs:
           fi
 
       - name: Build Web
-        run: flutter build web --no-tree-shake-icons --release --web-renderer html
+        run: flutter build web --no-tree-shake-icons --release
 
       - name: Show build size
         run: |

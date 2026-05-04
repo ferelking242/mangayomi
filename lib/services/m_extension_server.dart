@@ -25,6 +25,7 @@ class MExtensionServerPlatform {
   }
 
   Future<void> startServer() async {
+    if (kIsWeb) return;
     try {
       final isRunning = await check();
       if (!isRunning) {
