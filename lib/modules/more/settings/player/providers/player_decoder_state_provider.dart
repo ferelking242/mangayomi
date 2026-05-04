@@ -1,5 +1,6 @@
 import 'dart:io' if (dart.library.js_interop) 'package:watchtower/utils/io_stub.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:watchtower/main.dart';
 import 'package:watchtower/models/settings.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -28,6 +29,7 @@ class HwdecModeState extends _$HwdecModeState {
     if (rawValue) {
       return hwdecMode;
     }
+    if (kIsWeb) return "auto";
     final hwdecSupport = hwdecs[hwdecMode] ?? [];
     if (!hwdecSupport.contains("all") &&
         !hwdecSupport.contains(Platform.operatingSystem)) {
@@ -53,6 +55,7 @@ class HwdecModeState extends _$HwdecModeState {
 class EnableHardwareAccelState extends _$EnableHardwareAccelState {
   @override
   bool build() {
+    if (kIsWeb) return false;
     return isar.settings.getSync(227)!.enableHardwareAcceleration ??
             Platform.isMacOS
         ? false

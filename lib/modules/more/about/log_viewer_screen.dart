@@ -222,7 +222,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       }
 
       Directory? target;
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         final candidate = Directory('/storage/emulated/0/Download');
         try {
           if (!await candidate.exists()) {
@@ -245,7 +245,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
       botToast('Enregistré : ${outFile.path}');
 
-      if (!Platform.isAndroid ||
+      if (kIsWeb || !Platform.isAndroid ||
           !outFile.path.startsWith('/storage/emulated/0/Download')) {
         if (!mounted) return;
         final box = context.findRenderObject() as RenderBox?;

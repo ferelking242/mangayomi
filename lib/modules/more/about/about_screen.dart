@@ -272,7 +272,7 @@ class AboutScreen extends ConsumerWidget {
                                       path.join(directory!.path, 'logs.txt'),
                                     );
                                     if (await file.exists()) {
-                                      if (Platform.isLinux) {
+                                      if (!kIsWeb && Platform.isLinux) {
                                         await Clipboard.setData(
                                           ClipboardData(text: file.path),
                                         );
@@ -1143,7 +1143,7 @@ Future<void> _launchInBrowser(Uri url) async {
 /// Detect the platform/arch identifier the binary asset name should contain
 /// so we can prefilter releases. Returns a list of ABI tokens by priority.
 Future<List<String>> _currentPlatformAbiTokens() async {
-  if (Platform.isAndroid) {
+  if (!kIsWeb && Platform.isAndroid) {
     try {
       final info = await DeviceInfoPlugin().androidInfo;
       // Map android ABI to common asset name tokens used by zeusdl releases.
@@ -1162,15 +1162,15 @@ Future<List<String>> _currentPlatformAbiTokens() async {
       return ['arm64', 'arm64-v8a', 'aarch64'];
     }
   }
-  if (Platform.isLinux) return ['linux', 'x86_64', 'amd64'];
-  if (Platform.isWindows) return ['windows', 'win', 'x86_64', 'amd64'];
-  if (Platform.isMacOS) return ['darwin', 'macos', 'arm64', 'x86_64'];
+  if (!kIsWeb && Platform.isLinux) return ['linux', 'x86_64', 'amd64'];
+  if (!kIsWeb && Platform.isWindows) return ['windows', 'win', 'x86_64', 'amd64'];
+  if (!kIsWeb && Platform.isMacOS) return ['darwin', 'macos', 'arm64', 'x86_64'];
   return const [];
 }
 
 bool _isWrongPlatform(String name) {
   final n = name.toLowerCase();
-  if (Platform.isAndroid) {
+  if (!kIsWeb && Platform.isAndroid) {
     // Reject obvious desktop builds when running on Android.
     return n.contains('linux') ||
         n.contains('windows') ||
@@ -1261,7 +1261,7 @@ Future<void> _importZeusDLBinary(BuildContext context) async {
     await dest.parent.create(recursive: true);
     if (await dest.exists()) await dest.delete();
     await File(source).copy(overridePath);
-    if (Platform.isAndroid || Platform.isLinux || Platform.isMacOS) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isLinux || Platform.isMacOS)) {
       try {
         await Process.run('chmod', ['+x', overridePath]);
       } catch (_) {}
@@ -1380,7 +1380,7 @@ Future<void> _importAria2Binary(BuildContext context) async {
     await dest.parent.create(recursive: true);
     if (await dest.exists()) await dest.delete();
     await File(source).copy(userOverride);
-    if (Platform.isAndroid || Platform.isLinux || Platform.isMacOS) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isLinux || Platform.isMacOS)) {
       try {
         await Process.run('chmod', ['+x', userOverride]);
       } catch (_) {}

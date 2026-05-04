@@ -535,7 +535,7 @@ class _VideoListTileState extends State<_VideoListTile> {
                 ),
               ),
               // Open in external downloader
-              if (Platform.isAndroid)
+              if (!kIsWeb && Platform.isAndroid)
                 Tooltip(
                   message: 'Ouvrir dans un gestionnaire externe',
                   child: InkWell(
@@ -954,7 +954,7 @@ Future<void> downloadChapter(
         final mainDirectory = (await storageProvider.getDirectory())!;
         storageProvider.createDirectorySafely(mainDirectory.path);
         for (var index = 0; index < pageUrls.length; index++) {
-          if (Platform.isAndroid) {
+          if (!kIsWeb && Platform.isAndroid) {
             if (!(await File(
               p.join(mainDirectory.path, ".nomedia"),
             ).exists())) {

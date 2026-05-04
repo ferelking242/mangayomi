@@ -151,7 +151,7 @@ class _MangaChapterPageGalleryState
     readerControllerProvider(chapter: chapter).notifier,
   );
 
-  bool isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows);
 
   final Stopwatch _readingStopwatch = Stopwatch();
 

@@ -59,12 +59,12 @@ class BrowseSScreen extends ConsumerWidget {
                   ListTile(
                     onTap: () => context.push('/extensionServer'),
                     title: Text(
-                      Platform.isAndroid || Platform.isIOS
+                      (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
                           ? l10n.android_proxy_server
                           : l10n.android_proxy_server_mihon,
                     ),
                     subtitle: Text(
-                      Platform.isAndroid || Platform.isIOS
+                      (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
                           ? l10n.apkbridge_description
                           : l10n.android_proxy_server_mihon_description,
                       style: TextStyle(

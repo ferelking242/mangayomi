@@ -357,7 +357,7 @@ class DataAndStorage extends ConsumerWidget {
                 ],
               ),
             ),
-            if (!Platform.isIOS)
+            if (!kIsWeb && !Platform.isIOS)
               ListTile(
                 onTap: () async {
                   String? result = await FilePicker.getDirectoryPath();

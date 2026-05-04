@@ -448,7 +448,7 @@ class _DownloadFileScreenState extends ConsumerState<DownloadFileScreen>
                 ),
                 onPressed: _total == 0
                     ? () async {
-                        if (Platform.isAndroid) {
+                        if (!kIsWeb && Platform.isAndroid) {
                           final deviceInfo = DeviceInfoPlugin();
                           final androidInfo = await deviceInfo.androidInfo;
                           String apkUrl = "";

@@ -344,7 +344,7 @@ class RouterNotifier extends ChangeNotifier {
           return child!;
         }
       },
-      pageBuilder: (Platform.isIOS || Platform.isMacOS)
+      pageBuilder: (!kIsWeb && (Platform.isIOS || Platform.isMacOS))
           ? (context, state) {
               final pageChild = builder != null
                   ? builder(state.extra as T)
@@ -361,7 +361,7 @@ Page transitionPage({required LocalKey key, required child}) {
 }
 
 Route createRoute({required Widget page}) {
-  return (Platform.isIOS || Platform.isMacOS)
+  return (!kIsWeb && (Platform.isIOS || Platform.isMacOS))
       ? CupertinoPageRoute(builder: (context) => page)
       : MaterialPageRoute(builder: (context) => page);
 }

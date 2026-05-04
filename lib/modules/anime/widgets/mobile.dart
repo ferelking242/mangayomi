@@ -407,7 +407,7 @@ class _MobileControllerWidgetState
                             // Add padding in fullscreen!
                             isFullscreen(context)
                             ? MediaQuery.of(context).padding
-                            : Platform.isIOS
+                            : (!kIsWeb && Platform.isIOS)
                             ? EdgeInsets.only(
                                 bottom: MediaQuery.of(context).padding.bottom,
                               )

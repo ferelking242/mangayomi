@@ -345,7 +345,7 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
     try {
       final mgr = CookieManager.instance();
       await mgr.deleteAllCookies();
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         await InAppWebViewController.clearAllCache();
       }
       AppLogger.log('MAINT clearWebViewData: ok',
@@ -497,7 +497,7 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
   }
 
   Future<void> _openBatterySettings() async {
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       try {
         final uri = Uri.parse('package:com.example.watchtower');
         await launchUrl(
@@ -513,7 +513,7 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
   }
 
   Future<void> _openNotificationSettings() async {
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       try {
         await launchUrl(
           Uri.parse('android.settings.APP_NOTIFICATION_SETTINGS'),
@@ -667,7 +667,7 @@ class _AdvancedScreenState extends ConsumerState<AdvancedScreen> {
 
           // ── Section : Activité en arrière-plan ──────────────────────────
           _sectionHeader("Activité en arrière-plan"),
-          if (Platform.isAndroid)
+          if (!kIsWeb && Platform.isAndroid)
             _action(
               title: "Désactiver la fonction d'optimisation de la batterie",
               subtitle:

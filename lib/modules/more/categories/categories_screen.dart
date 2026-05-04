@@ -152,7 +152,7 @@ class _CategoriesTabState extends ConsumerState<CategoriesTab>
   }
 
   final bool _isDesktop =
-      Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+      !kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows);
 
   /// Moves a category from `index` to `newIndex` in the list,
   /// swaps their positions in memory, and persists the change in Isar.

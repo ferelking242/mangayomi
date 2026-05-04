@@ -118,7 +118,7 @@ class _SubtitlesWidgetSearchState extends ConsumerState<SubtitlesWidgetSearch> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: TextFormField(
                         onTap: () {
-                          if (Platform.isAndroid || Platform.isIOS) {
+                          if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
                             setState(() {
                               hide = true;
                             });

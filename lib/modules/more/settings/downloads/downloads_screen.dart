@@ -253,7 +253,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(
-      Platform.isIOS || Platform.isMacOS
+      !kIsWeb && (Platform.isIOS || Platform.isMacOS)
           ? _cupertinoRoute(page)
           : MaterialPageRoute(builder: (_) => page),
     );

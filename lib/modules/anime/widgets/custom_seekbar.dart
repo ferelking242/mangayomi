@@ -61,7 +61,7 @@ class CustomSeekBarState extends State<CustomSeekBar> {
     buffer = player.state.buffer;
   }
 
-  final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  final isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
   @override
   Widget build(BuildContext context) {
     final maxValue = max(duration.inMilliseconds.toDouble(), 0).toDouble();

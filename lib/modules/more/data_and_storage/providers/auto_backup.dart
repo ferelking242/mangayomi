@@ -65,12 +65,12 @@ class AutoBackupLocationState extends _$AutoBackupLocationState {
   Directory? _storageProvider;
 
   Future _refresh() async {
-    _storageProvider = Platform.isIOS
+    _storageProvider = (!kIsWeb && Platform.isIOS)
         ? await StorageProvider().getIosBackupDirectory()
         : await StorageProvider().getDefaultDirectory();
     final settings = isar.settings.getSync(227);
     state = (
-      Platform.isIOS
+      (!kIsWeb && Platform.isIOS)
           ? _storageProvider!.path
           : p.join(_storageProvider!.path, "backup"),
       settings!.autoBackupLocation ?? "",
@@ -93,7 +93,7 @@ Future<void> checkAndBackup(Ref ref) async {
   final storageProvider = StorageProvider();
   final backupLocation = ref.read(autoBackupLocationStateProvider).$2;
   Directory? backupDirectory;
-  if (Platform.isIOS) {
+  if (!kIsWeb && Platform.isIOS) {
     backupDirectory = await (storageProvider.getIosBackupDirectory());
   } else {
     final defaultDirectory = await storageProvider.getDefaultDirectory();

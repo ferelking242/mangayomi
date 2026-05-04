@@ -77,7 +77,7 @@ class LibraryAppBar extends ConsumerWidget implements PreferredSizeWidget {
             ),
           );
     final l10n = l10nLocalizations(context)!;
-    final isMobile = Platform.isIOS || Platform.isAndroid;
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
     if (isLongPressed) {
       return manga.when(

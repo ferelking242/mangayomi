@@ -366,7 +366,7 @@ class ReaderScreen extends ConsumerWidget {
                 style: TextStyle(fontSize: 11, color: context.secondaryColor),
               ),
             ),
-            if (!(Platform.isAndroid || Platform.isIOS))
+            if (kIsWeb || !(Platform.isAndroid || Platform.isIOS))
               SwitchListTile(
                 value: fullScreenReader,
                 title: Text(context.l10n.fullscreen),

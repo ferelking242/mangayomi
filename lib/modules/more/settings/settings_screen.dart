@@ -56,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.explore_rounded,
               onTap: () => context.push('/browseS'),
             ),
-            if (!Platform.isLinux)
+            if (kIsWeb || !Platform.isLinux)
               ListTileWidget(
                 title: l10n.security,
                 icon: Icons.security_rounded,

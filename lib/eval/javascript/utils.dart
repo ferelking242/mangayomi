@@ -217,7 +217,7 @@ async function parseEpubChapter(bookName, url, headers, chapterTitle) {
         : null;
 
     final tmpDirectory = (await StorageProvider().getTmpDirectory())!;
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       if (!(await File(p.join(tmpDirectory.path, ".nomedia")).exists())) {
         await File(p.join(tmpDirectory.path, ".nomedia")).create();
       }

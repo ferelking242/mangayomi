@@ -66,11 +66,11 @@ class ReaderAppBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fullScreenReader = ref.watch(fullScreenReaderStateProvider);
     final isDesktop =
-        Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+        !kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows);
     final isLocalArchive = chapter.manga.value?.isLocalArchive ?? false;
 
     double height = isVisible
-        ? Platform.isIOS
+        ? (!kIsWeb && Platform.isIOS)
               ? 120.0
               : !fullScreenReader && !isDesktop
               ? 55.0

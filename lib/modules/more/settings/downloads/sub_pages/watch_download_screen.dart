@@ -623,7 +623,7 @@ class _ExternalAppTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (Platform.isAndroid &&
+          if (!kIsWeb && Platform.isAndroid &&
               ExternalDownloaderLauncher.packageMap.containsKey(app.id))
             IconButton(
               icon: const Icon(Icons.play_arrow_rounded, size: 20),

@@ -167,7 +167,7 @@ class _CreateBackupState extends ConsumerState<CreateBackup> {
                         ),
                         onPressed: () async {
                           String? result;
-                          if (Platform.isIOS) {
+                          if (!kIsWeb && Platform.isIOS) {
                             result =
                                 (await StorageProvider()
                                         .getIosBackupDirectory())!
