@@ -36,23 +36,13 @@ jobs:
         run: |
           FILE=$(find ~/.pub-cache -name "CSSParser.dart" -path "*/pseudom*" 2>/dev/null | head -1)
           if [ -n "$FILE" ]; then
-            python3 - <<'PYEOF'
-import re, sys
-path = "$FILE"
-with open(path) as f:
-    content = f.read()
-# Replace 64-bit ANTLR token-set bitmasks with 0 so dart2js can compile.
-# This makes the set-membership tests always return false (conservative parse),
-# which is acceptable for a design-preview web build.
-content = re.sub(
-    r'\(\(1 << _la\) & -?[0-9]{10,}\)',
-    '((1 << _la) & 0)',
-    content
-)
-with open(path, 'w') as f:
-    f.write(content)
-print("Patched", path)
-PYEOF
+            sed -i 's/& -3765256679076942294/\& 0/g' "$FILE"
+            sed -i 's/& 4626330031550017026/\& 0/g' "$FILE"
+            sed -i 's/& 5779244251887978624/\& 0/g' "$FILE"
+            sed -i 's/& -4597022382133018102/\& 0/g' "$FILE"
+            sed -i 's/& -4020561629828808022/\& 0/g' "$FILE"
+            sed -i 's/& -2612335174470078806/\& 0/g' "$FILE"
+            echo "Patched $FILE"
           else
             echo "pseudom CSSParser.dart not found, skipping patch"
           fi
