@@ -117,6 +117,18 @@ dependency_overrides:
       url: https://github.com/ThexXTURBOXx/flutter_web_auth_2.git
       ref: 3.x-without-v1
       path: flutter_web_auth_2
+  flutter_qjs:
+    path: web_stubs/flutter_qjs
+  media_kit:
+    path: web_stubs/media_kit
+  media_kit_video:
+    path: web_stubs/media_kit_video
+  media_kit_libs_video:
+    path: web_stubs/media_kit_libs_video
+  local_auth:
+    path: web_stubs/local_auth
+  permission_handler:
+    path: web_stubs/permission_handler
   window_manager:
     path: web_stubs/window_manager
   desktop_webview_window:
