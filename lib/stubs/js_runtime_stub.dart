@@ -36,7 +36,9 @@ abstract class JavascriptRuntime {
   }
 }
 
-class _QuickJsStub extends JavascriptRuntime {
+class QuickJsRuntime2 extends JavascriptRuntime {
+  QuickJsRuntime2({int? stackSize});
+
   @override void dispose() {}
   @override JsEvalResult evaluate(String code, {String? sourceUrl}) => JsEvalResult('', null);
   @override Future<JsEvalResult> evaluateAsync(String code, {String? sourceUrl}) async => JsEvalResult('', null);
@@ -51,7 +53,7 @@ class _QuickJsStub extends JavascriptRuntime {
 }
 
 JavascriptRuntime getJavascriptRuntime({Map<String, dynamic>? extraArgs = const {}}) {
-  return _QuickJsStub();
+  return QuickJsRuntime2();
 }
 
 extension HandlePromises on JavascriptRuntime {
