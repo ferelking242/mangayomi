@@ -15,8 +15,32 @@ export 'dart:io'
         FileSystemEntityType,
         FileStat,
         Link,
-        Platform,
         exit;
+
+// ─── Platform stub for web ────────────────────────────────────────────────────
+// dart:io Platform throws on web. This stub returns safe defaults so that
+// all Platform.isX / Platform.operatingSystem calls compile and run on web
+// without crashing (they will return false/web-safe values).
+class Platform {
+  static const bool isAndroid  = false;
+  static const bool isIOS      = false;
+  static const bool isLinux    = false;
+  static const bool isMacOS    = false;
+  static const bool isWindows  = false;
+  static const bool isFuchsia  = false;
+  static String get operatingSystem        => 'web';
+  static String get operatingSystemVersion => 'web';
+  static String get localHostname          => 'localhost';
+  static String get localeName             => 'en_US';
+  static String get pathSeparator          => '/';
+  static String get executable             => '';
+  static String get resolvedExecutable     => '';
+  static String get version                => '';
+  static List<String> get executableArguments => const [];
+  static Map<String, String> get environment  => const {};
+  static int get numberOfProcessors           => 1;
+  static Uri get script                       => Uri.parse('');
+}
 
 // ─── IOSink stub (dart:io.IOSink not available on Flutter web) ────────────────
 class IOSink implements StringSink {
