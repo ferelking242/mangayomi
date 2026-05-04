@@ -118,7 +118,8 @@ void main(List<String> args) async {
       }
       final storage = StorageProvider();
       if (kIsWeb) {
-        isar = MockIsar();
+        final _mockIsar = MockIsar()..seed<Settings>(227, Settings());
+        isar = _mockIsar;
       } else {
         isar = await storage.initDB(null, inspector: kDebugMode);
       }
