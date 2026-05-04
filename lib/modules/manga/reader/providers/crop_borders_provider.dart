@@ -46,20 +46,41 @@ class ImageCropIsolate {
 
   Future<void> _initRustIsolate() async {
     _receivePort = ReceivePort();
+    final errorPort = ReceivePort();
 
     _rustIsolate = await Isolate.spawn(
       _rustIsolateEntryPoint,
       _receivePort!.sendPort,
+      onError: errorPort.sendPort,
+      errorsAreFatal: true,
     );
 
     final completer = Completer<SendPort>();
+
+    errorPort.listen((error) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError('Crop isolate crashed: $error'),
+        );
+      }
+      errorPort.close();
+    });
+
     _receivePort!.listen((message) {
       if (message is SendPort) {
-        completer.complete(message);
+        if (!completer.isCompleted) completer.complete(message);
       }
     });
 
-    _sendPort = await completer.future;
+    try {
+      _sendPort = await completer.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () =>
+            throw StateError('Crop isolate handshake timed out'),
+      );
+    } finally {
+      errorPort.close();
+    }
     _isRunning = true;
   }
 
