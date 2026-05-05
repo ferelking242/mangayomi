@@ -28,13 +28,6 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- Disable Impeller (Vulkan) — falls back to Skia/OpenGL ES.
-                 Impeller on Samsung Exynos (Mali GPU) causes ~3s black screen
-                 before surfaceCreated fires. Skia initializes immediately. -->
-            <meta-data
-              android:name="io.flutter.embedding.android.EnableImpeller"
-              android:value="false"
-              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -77,5 +70,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
         <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+        <!-- Disable Impeller/Vulkan at APPLICATION level (Flutter reads ApplicationInfo.metaData,
+             NOT ActivityInfo.metaData — placing it inside <activity> is silently ignored).
+             Impeller on Samsung Exynos/Mali GPU causes ~3s black screen before surfaceCreated. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
 </manifest>

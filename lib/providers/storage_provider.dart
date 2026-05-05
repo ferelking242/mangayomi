@@ -263,21 +263,47 @@ class StorageProvider {
           inspector: inspector,
         );
       } catch (e) {
-        // "Collection id is invalid" happens when the Isar schema changed between
-        // APK versions and the old DB is still on disk. Wipe and start fresh.
-        debugPrint('[initDB] Isar.open failed ($e) — deleting stale DB and retrying');
+        final eMsg = e.toString();
+
+        // Race condition: another isolate opened the same named instance first.
+        // isar_community tracks instances at native level across isolates, so a
+        // second Isar.open() throws instead of returning the existing handle.
+        if (eMsg.contains('already been opened') || eMsg.contains('already opened')) {
+          final existing = Isar.getInstance('watchtowerDb');
+          if (existing != null && existing.isOpen) return existing;
+          // Instance was opened concurrently — brief wait then retry lookup.
+          await Future.delayed(const Duration(milliseconds: 300));
+          final existing2 = Isar.getInstance('watchtowerDb');
+          if (existing2 != null && existing2.isOpen) return existing2;
+          rethrow;
+        }
+
+        // "Collection id is invalid" — schema changed between APK versions.
+        // Wipe the stale DB files and reopen from scratch.
+        debugPrint('[initDB] Isar.open failed ($eMsg) — deleting stale DB and retrying');
         for (final suffix in ['.isar', '.isar.lock', '.isar.tmp']) {
           try {
             final f = File('${dir!.path}/watchtowerDb$suffix');
             if (await f.exists()) await f.delete();
           } catch (_) {}
         }
-        isar = await Isar.open(
-          schemas,
-          directory: dir!.path,
-          name: "watchtowerDb",
-          inspector: inspector,
-        );
+        try {
+          isar = await Isar.open(
+            schemas,
+            directory: dir!.path,
+            name: "watchtowerDb",
+            inspector: inspector,
+          );
+        } catch (e2) {
+          // After wipe, another isolate may have beaten us to re-opening.
+          final e2Msg = e2.toString();
+          if (e2Msg.contains('already been opened') || e2Msg.contains('already opened')) {
+            await Future.delayed(const Duration(milliseconds: 300));
+            final existing = Isar.getInstance('watchtowerDb');
+            if (existing != null && existing.isOpen) return existing;
+          }
+          rethrow;
+        }
       }
 
     const _wtBase =

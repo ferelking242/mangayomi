@@ -1,4 +1,4 @@
-name: Build Android ARMv8 Debug
+name: Build Android ARMv8 Profile
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build ARMv8 Debug APK
+    name: Build ARMv8 Profile APK
     runs-on: ubuntu-latest
 
     steps:
@@ -61,10 +61,10 @@ jobs:
           echo "code=$VCODE" >> "$GITHUB_OUTPUT"
           echo "Building $VNAME ($VCODE)"
 
-      - name: Build APK (ARMv8 debug)
+      - name: Build APK (ARMv8 profile)
         run: |
           flutter build apk \
-            --debug \
+            --profile \
             --target-platform android-arm64 \
             --split-per-abi \
             --no-tree-shake-icons \
@@ -73,7 +73,7 @@ jobs:
 
       - name: Show APK size
         run: |
-          APK=build/app/outputs/apk/debug/app-arm64-v8a-debug.apk
+          APK=build/app/outputs/apk/profile/app-arm64-v8a-profile.apk
           if [ -f "$APK" ]; then
             echo "APK size: $(du -sh $APK | cut -f1)"
             echo "Version: ${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.code }})"
@@ -82,6 +82,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-arm64-debug-${{ steps.ver.outputs.name }}-b${{ steps.ver.outputs.code }}
-          path: build/app/outputs/apk/debug/app-arm64-v8a-debug.apk
+          name: app-arm64-profile-${{ steps.ver.outputs.name }}-b${{ steps.ver.outputs.code }}
+          path: build/app/outputs/apk/profile/app-arm64-v8a-profile.apk
           retention-days: 14
