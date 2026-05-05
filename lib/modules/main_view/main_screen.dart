@@ -1063,9 +1063,11 @@ class _FloatingDockState extends State<_FloatingDock> {
     }
 
     // ── Library switch items ──────────────────────────────────────────────────
+    // Insert the HUB after Accueil (WatchtowerHome) so Accueil stays first.
     if (d.contains('_enableLibSwitch')) {
+      final homeIdx = items.indexWhere((i) => i.route == '/WatchtowerHome');
       items.insert(
-        0,
+        homeIdx != -1 ? homeIdx + 1 : 0,
         const _DockItemData(
           route: '_enableLibSwitch',
           label: 'Hub',
