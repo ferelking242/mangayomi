@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <!-- Dark-mode launch background: dark surface, not pure black -->
+  <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+      <item>
+          <shape android:shape="rectangle">
+              <solid android:color="#1B1B1E" />
+          </shape>
+      </item>
+  </layer-list>
+  
