@@ -8,24 +8,26 @@
   class MockQuery<T> extends Query<T> {
     @override
     final Isar isar;
-    MockQuery(this.isar);
+    final List<T> _data;
 
-    @override Future<T?> findFirst() => Future.value(null);
-    @override T? findFirstSync() => null;
-    @override Future<List<T>> findAll() => Future.value([]);
-    @override List<T> findAllSync() => [];
+    MockQuery(this.isar, [this._data = const []]);
+
+    @override Future<T?> findFirst() => Future.value(_data.firstOrNull);
+    @override T? findFirstSync() => _data.firstOrNull;
+    @override Future<List<T>> findAll() => Future.value(List<T>.from(_data));
+    @override List<T> findAllSync() => List<T>.from(_data);
 
     @override @protected
     Future<R?> aggregate<R>(AggregationOp op) {
-      if (op == AggregationOp.count) return Future.value(0 as R?);
-      if (op == AggregationOp.isEmpty) return Future.value(1 as R?);
+      if (op == AggregationOp.count) return Future.value(_data.length as R?);
+      if (op == AggregationOp.isEmpty) return Future.value((_data.isEmpty ? 1 : 0) as R?);
       return Future.value(null);
     }
 
     @override @protected
     R? aggregateSync<R>(AggregationOp op) {
-      if (op == AggregationOp.count) return 0 as R?;
-      if (op == AggregationOp.isEmpty) return 1 as R?;
+      if (op == AggregationOp.count) return _data.length as R?;
+      if (op == AggregationOp.isEmpty) return (_data.isEmpty ? 1 : 0) as R?;
       return null;
     }
 
@@ -33,8 +35,19 @@
     @override bool deleteFirstSync() => false;
     @override Future<int> deleteAll() => Future.value(0);
     @override int deleteAllSync() => 0;
-    @override Stream<List<T>> watch({bool fireImmediately = false}) => const Stream.empty();
-    @override Stream<void> watchLazy({bool fireImmediately = false}) => const Stream.empty();
+
+    /// Returns the stored data immediately when [fireImmediately] is true,
+    /// otherwise the stream stays open but never emits (no real-time DB on web).
+    @override Stream<List<T>> watch({bool fireImmediately = false}) {
+      if (fireImmediately) return Stream.value(List<T>.from(_data));
+      return const Stream.empty();
+    }
+
+    @override Stream<void> watchLazy({bool fireImmediately = false}) {
+      if (fireImmediately) return Stream.value(null);
+      return const Stream.empty();
+    }
+
     @override Future<R> exportJsonRaw<R>(R Function(Uint8List) callback) => Future.value(callback(Uint8List(0)));
     @override R exportJsonRawSync<R>(R Function(Uint8List) callback) => callback(Uint8List(0));
   }
@@ -52,7 +65,7 @@
     @override CollectionSchema<OBJ> get schema =>
         throw UnsupportedError('Web mock: schema not available');
 
-    // Single-object accessors - fixes NoSuchMethodError on web
+    // Single-object accessors
     @override Future<OBJ?> get(int id) => Future.value(_store[id]);
     @override OBJ? getSync(int id) => _store[id];
     @override Future<OBJ?> getByIndex(String indexName, List<Object?> key) => Future.value(null);
@@ -91,13 +104,23 @@
       int? offset,
       int? limit,
       String? property,
-    }) => MockQuery<R>(_mockIsar);
+    }) {
+      // Pass the stored objects so watch(fireImmediately: true) can emit them
+      // immediately instead of hanging in loading state on web.
+      final data = _store.values.whereType<R>().toList();
+      return MockQuery<R>(_mockIsar, data);
+    }
 
     @override Future<int> count() => Future.value(_store.length);
     @override int countSync() => _store.length;
     @override Future<int> getSize({bool includeIndexes = false, bool includeLinks = false}) => Future.value(0);
     @override int getSizeSync({bool includeIndexes = false, bool includeLinks = false}) => 0;
-    @override Stream<void> watchLazy({bool fireImmediately = false}) => const Stream.empty();
+
+    @override Stream<void> watchLazy({bool fireImmediately = false}) {
+      if (fireImmediately) return Stream.value(null);
+      return const Stream.empty();
+    }
+
     @override Stream<OBJ?> watchObject(int id, {bool fireImmediately = false}) => Stream.value(_store[id]);
     @override Stream<void> watchObjectLazy(int id, {bool fireImmediately = false}) => const Stream.empty();
     @override Future<void> verify(List<OBJ> objects) => Future.value();
