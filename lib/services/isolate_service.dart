@@ -83,7 +83,7 @@ class GetIsolateService {
 
     await initializeDateFormatting();
 
-    isar = await StorageProvider().initDB(null, inspector: kDebugMode);
+    isar = await StorageProvider().initDB(null, inspector: false);
 
     final receivePort = ReceivePort();
     Zone.current

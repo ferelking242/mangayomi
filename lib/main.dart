@@ -125,7 +125,7 @@ void main(List<String> args) async {
         final _mockIsar = MockIsar()..seed<Settings>(227, Settings());
         isar = _mockIsar;
       } else {
-        isar = await storage.initDB(null, inspector: kDebugMode);
+        isar = await storage.initDB(null, inspector: false);
       }
 
       // Init Hive BEFORE runApp so nav_display providers read persisted values
