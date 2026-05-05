@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-  <resources>
-      <!-- Dark-mode splash: uses a dark-but-not-black background -->
-      <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
-          <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-          <item name="android:windowBackground">@drawable/launch_background</item>
-      </style>
-      <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
-          <item name="android:windowBackground">?android:colorBackground</item>
-      </style>
-  </resources>
-  
+<resources>
+    <!-- Dark-mode splash: dark surface color, not pure black -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <!-- NormalTheme: background shown behind Flutter while it initializes.
+         Must NOT be pure black — use the same launch_background drawable
+         which resolves to #1B1B1E in night mode via drawable-night/ -->
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+</resources>
