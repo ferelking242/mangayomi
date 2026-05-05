@@ -224,15 +224,19 @@ class StorageProvider {
   }
 
   Future<Isar> initDB(String? path, {bool inspector = false}) async {
-    Directory? dir;
-    if (path == null) {
-      dir = await getDatabaseDirectory();
-    } else {
-      dir = Directory(path);
-    }
+      Directory? dir;
+      if (path == null) {
+        dir = await getDatabaseDirectory();
+      } else {
+        dir = Directory(path);
+      }
 
-    final isar = await Isar.open(
-      [
+      // If the DB is already open (e.g. called concurrently from an isolate),
+      // return the existing instance immediately.
+      final existing = Isar.getInstance('watchtowerDb');
+      if (existing != null && existing.isOpen) return existing;
+
+      final schemas = [
         MangaSchema,
         ChangedPartSchema,
         ChapterSchema,
@@ -248,11 +252,34 @@ class StorageProvider {
         SyncPreferenceSchema,
         SourcePreferenceSchema,
         SourcePreferenceStringValueSchema,
-      ],
-      directory: dir!.path,
-      name: "watchtowerDb",
-      inspector: inspector,
-    );
+      ];
+
+      Isar isar;
+      try {
+        isar = await Isar.open(
+          schemas,
+          directory: dir!.path,
+          name: "watchtowerDb",
+          inspector: inspector,
+        );
+      } catch (e) {
+        // "Collection id is invalid" happens when the Isar schema changed between
+        // APK versions and the old DB is still on disk. Wipe and start fresh.
+        debugPrint('[initDB] Isar.open failed ($e) — deleting stale DB and retrying');
+        for (final suffix in ['.isar', '.isar.lock', '.isar.tmp']) {
+          try {
+            final f = File('${dir!.path}/watchtowerDb$suffix');
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+        }
+        isar = await Isar.open(
+          schemas,
+          directory: dir!.path,
+          name: "watchtowerDb",
+          inspector: inspector,
+        );
+      }
+
     const _wtBase =
         'https://raw.githubusercontent.com/ferelking242/watchtower-extensions/main';
     final mangaRepo = Repo(
