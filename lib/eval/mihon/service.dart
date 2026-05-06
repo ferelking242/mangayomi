@@ -362,7 +362,12 @@ class MihonExtensionService implements ExtensionService {
   }
 
   Map<String, String> getCookie() {
-    final userAgent = isar.settings.getSync(227)!.userAgent;
+    // `isar` is not available in the background isolate (getIsolateService).
+    // Guard against LateInitializationError / uninitialised Isar handle.
+    String? userAgent;
+    try {
+      userAgent = isar.settings.getSync(227)?.userAgent;
+    } catch (_) {}
     return {
       ...MClient.getCookiesPref(source.baseUrl!),
       'user-agent': ?userAgent,

@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:watchtower/eval/lib.dart';
-import 'package:watchtower/main.dart';
 import 'package:watchtower/models/source.dart';
-import 'package:watchtower/providers/storage_provider.dart';
 import 'package:watchtower/services/http/m_client.dart';
 import 'package:watchtower/utils/log/log.dart';
 
@@ -83,7 +81,18 @@ class GetIsolateService {
 
     await initializeDateFormatting();
 
-    isar = await StorageProvider().initDB(null, inspector: false);
+    // DO NOT open Isar here.  isar_community does not allow two Dart isolates
+    // to call Isar.open() with the same database name — even sequentially the
+    // second open returns "IllegalArg: Collection id is invalid".  The main
+    // isolate already owns the 'watchtowerDb' handle; opening it again here
+    // races with the main isolate's initDB(), causes concurrent deletes, and
+    // leaves the main isolate's `isar` global uninitialized → every Riverpod
+    // provider crashes with LateInitializationError at startup.
+    //
+    // The one caller that reads `isar` inside this isolate (MihonService
+    // .getCookie → isar.settings.getSync(227)!.userAgent) is now guarded with
+    // a try-catch and falls back to an empty user-agent when isar is not
+    // available in this isolate's memory space.
 
     final receivePort = ReceivePort();
     Zone.current
