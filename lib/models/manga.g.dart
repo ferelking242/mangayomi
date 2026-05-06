@@ -100,7 +100,7 @@ const MangaSchema = CollectionSchema(
   indexes: {},
   links: {
     r'chapters': LinkSchema(
-      id: -0,
+      id: -1477759690489116902,
       name: r'chapters',
       target: r'Chapter',
       single: false,

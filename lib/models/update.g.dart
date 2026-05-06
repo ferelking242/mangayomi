@@ -39,7 +39,7 @@ const UpdateSchema = CollectionSchema(
   indexes: {},
   links: {
     r'chapter': LinkSchema(
-      id: -0,
+      id: -7524967726288995715,
       name: r'chapter',
       target: r'Chapter',
       single: true,

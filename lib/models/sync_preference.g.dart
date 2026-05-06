@@ -15,7 +15,7 @@ extension GetSyncPreferenceCollection on Isar {
 
 const SyncPreferenceSchema = CollectionSchema(
   name: r'Sync Preference',
-  id: 0,
+  id: 2788277548653279925,
   properties: {
     r'authToken': PropertySchema(
       id: 0,

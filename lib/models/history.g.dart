@@ -51,7 +51,7 @@ const HistorySchema = CollectionSchema(
   indexes: {},
   links: {
     r'chapter': LinkSchema(
-      id: 0,
+      id: 4328961867471184172,
       name: r'chapter',
       target: r'Chapter',
       single: true,
