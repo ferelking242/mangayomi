@@ -296,11 +296,33 @@ class StorageProvider {
           );
         } catch (e2) {
           // After wipe, another isolate may have beaten us to re-opening.
+          // Isar.getInstance() is per-Dart-isolate and will return null even
+          // when another isolate holds the instance, so we cannot rely on it
+          // for cross-isolate recovery. Instead, retry Isar.open() after a
+          // brief delay — if the sibling isolate already has a clean DB open
+          // this will either succeed (isar_community cross-isolate support) or
+          // throw again, in which case we give up.
           final e2Msg = e2.toString();
-          if (e2Msg.contains('already been opened') || e2Msg.contains('already opened')) {
-            await Future.delayed(const Duration(milliseconds: 300));
+          if (e2Msg.contains('already been opened') ||
+              e2Msg.contains('already opened') ||
+              e2Msg.contains('IllegalArg') ||
+              e2Msg.contains('Collection id')) {
+            await Future.delayed(const Duration(milliseconds: 400));
+            // Last-chance check: maybe this isolate already has the handle.
             final existing = Isar.getInstance('watchtowerDb');
             if (existing != null && existing.isOpen) return existing;
+            // Try one final open — the sibling isolate should have stabilised
+            // the DB by now, so this should succeed or fail definitively.
+            try {
+              return await Isar.open(
+                schemas,
+                directory: dir!.path,
+                name: "watchtowerDb",
+                inspector: inspector,
+              );
+            } catch (e3) {
+              debugPrint('[initDB] final retry failed: $e3');
+            }
           }
           rethrow;
         }

@@ -100,7 +100,13 @@ void main(List<String> args) async {
       if (!kIsWeb) {
         await RustLib.init();
         await imgCropIsolate.start();
-        await getIsolateService.start();
+        // getIsolateService.start() is intentionally called AFTER initDB below.
+        // Both the main isolate and the background isolate call StorageProvider().initDB().
+        // If a stale DB (schema mismatch from an old build) is on disk, calling them
+        // concurrently causes both to race on the delete+retry path, leaving isar
+        // uninitialized and crashing every provider that reads isar.settings.
+        // Starting the isolate only after the main isolate has successfully opened the DB
+        // guarantees the background isolate always sees a clean, valid database.
       }
       if (!kIsWeb && !(Platform.isAndroid || Platform.isIOS)) {
         await windowManager.ensureInitialized();
@@ -126,6 +132,10 @@ void main(List<String> args) async {
         isar = _mockIsar;
       } else {
         isar = await storage.initDB(null, inspector: false);
+      }
+      // Start the background isolate AFTER the DB is open and isar is assigned.
+      if (!kIsWeb) {
+        await getIsolateService.start();
       }
 
       // Init Hive BEFORE runApp so nav_display providers read persisted values
