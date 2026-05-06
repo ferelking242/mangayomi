@@ -964,128 +964,111 @@ class _FloatingDockState extends State<_FloatingDock> {
     final d = widget.dest;
     final items = <_DockItemData>[];
 
-    // ── Order: Accueil → Anime (Watch) → Manga → Novel → Music → Game → Library → Browse → More ──
-    if (d.contains('/WatchtowerHome')) {
-      items.add(const _DockItemData(
-        route: '/WatchtowerHome',
-        label: 'Accueil',
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home_rounded,
-      ));
-    }
-    if (d.contains('/AnimeLibrary')) {
-      items.add(_DockItemData(
-        route: '/AnimeLibrary',
-        label: l10n.watch,
-        icon: Icons.live_tv_outlined,
-        activeIcon: Icons.live_tv,
-      ));
-    }
-    if (d.contains('/MangaLibrary')) {
-      items.add(_DockItemData(
-        route: '/MangaLibrary',
-        label: l10n.manga,
-        icon: Icons.auto_stories_outlined,
-        activeIcon: Icons.auto_stories,
-      ));
-    }
-    if (d.contains('/NovelLibrary')) {
-      items.add(_DockItemData(
-        route: '/NovelLibrary',
-        label: l10n.novel,
-        icon: Icons.local_library_outlined,
-        activeIcon: Icons.local_library,
-      ));
-    }
-    if (d.contains('/MusicLibrary')) {
-      items.add(const _DockItemData(
-        route: '/MusicLibrary',
-        label: 'Music',
-        icon: Icons.music_note_outlined,
-        activeIcon: Icons.music_note,
-      ));
-    }
-    if (d.contains('/GameLibrary')) {
-      items.add(const _DockItemData(
-        route: '/GameLibrary',
-        label: 'Games',
-        icon: Icons.sports_esports_outlined,
-        activeIcon: Icons.sports_esports,
-      ));
-    }
-    if (d.contains('/Library')) {
-      items.add(_DockItemData(
-        route: '/Library',
-        label: l10n.library,
-        icon: Icons.collections_bookmark_outlined,
-        activeIcon: Icons.collections_bookmark,
-      ));
-    }
-    if (d.contains('/browse')) {
-      items.add(_DockItemData(
-        route: '/browse',
-        label: l10n.browse,
-        icon: Icons.explore_outlined,
-        activeIcon: Icons.explore,
-      ));
-    }
-    if (d.contains('/history')) {
-      items.add(_DockItemData(
-        route: '/history',
-        label: l10n.history,
-        icon: Icons.history_outlined,
-        activeIcon: Icons.history,
-      ));
-    }
-    if (d.contains('/more')) {
-      items.add(_DockItemData(
-        route: '/more',
-        label: l10n.more,
-        icon: Icons.apps_outlined,
-        activeIcon: Icons.apps,
-      ));
-    }
-    if (d.contains('/updates')) {
-      items.add(_DockItemData(
-        route: '/updates',
-        label: l10n.updates,
-        icon: Icons.new_releases_outlined,
-        activeIcon: Icons.new_releases,
-      ));
-    }
-    if (d.contains('/trackerLibrary')) {
-      items.add(_DockItemData(
-        route: '/trackerLibrary',
-        label: l10n.tracking,
-        icon: Icons.account_tree_outlined,
-        activeIcon: Icons.account_tree,
-      ));
-    }
-
-    // ── Library switch items ──────────────────────────────────────────────────
-    // Insert the HUB after Accueil (WatchtowerHome) so Accueil stays first.
-    if (d.contains('_enableLibSwitch')) {
-      final homeIdx = items.indexWhere((i) => i.route == '/WatchtowerHome');
-      items.insert(
-        homeIdx != -1 ? homeIdx + 1 : 0,
-        const _DockItemData(
-          route: '_enableLibSwitch',
-          label: 'Hub',
-          icon: Icons.apps_outlined,
-          activeIcon: Icons.apps,
-        ),
-      );
-    }
-    if (d.contains('_disableLibSwitch')) {
-      items.insert(
-        0,
-        _DockItemData(
-          route: '_disableLibSwitch',
-          label: l10n.go_back,
-          icon: Icons.arrow_back,
-          activeIcon: Icons.arrow_back,
-        ),
-      );
+    // ── Respect the user-configured navigation order from dest ──────────────
+    // dest already carries the correct order (from navigationOrderStateProvider)
+    // including any _enableLibSwitch / _disableLibSwitch replacements.
+    // Iterate it directly so the floating dock matches the classic dock and rail.
+    for (final route in d) {
+      switch (route) {
+        case '/WatchtowerHome':
+          items.add(const _DockItemData(
+            route: '/WatchtowerHome',
+            label: 'Accueil',
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded,
+          ));
+        case '/AnimeLibrary':
+          items.add(_DockItemData(
+            route: '/AnimeLibrary',
+            label: l10n.watch,
+            icon: Icons.live_tv_outlined,
+            activeIcon: Icons.live_tv,
+          ));
+        case '/MangaLibrary':
+          items.add(_DockItemData(
+            route: '/MangaLibrary',
+            label: l10n.manga,
+            icon: Icons.auto_stories_outlined,
+            activeIcon: Icons.auto_stories,
+          ));
+        case '/NovelLibrary':
+          items.add(_DockItemData(
+            route: '/NovelLibrary',
+            label: l10n.novel,
+            icon: Icons.local_library_outlined,
+            activeIcon: Icons.local_library,
+          ));
+        case '/MusicLibrary':
+          items.add(const _DockItemData(
+            route: '/MusicLibrary',
+            label: 'Music',
+            icon: Icons.music_note_outlined,
+            activeIcon: Icons.music_note,
+          ));
+        case '/GameLibrary':
+          items.add(const _DockItemData(
+            route: '/GameLibrary',
+            label: 'Games',
+            icon: Icons.sports_esports_outlined,
+            activeIcon: Icons.sports_esports,
+          ));
+        case '/Library':
+          items.add(_DockItemData(
+            route: '/Library',
+            label: l10n.library,
+            icon: Icons.collections_bookmark_outlined,
+            activeIcon: Icons.collections_bookmark,
+          ));
+        case '/browse':
+          items.add(_DockItemData(
+            route: '/browse',
+            label: l10n.browse,
+            icon: Icons.explore_outlined,
+            activeIcon: Icons.explore,
+          ));
+        case '/history':
+          items.add(_DockItemData(
+            route: '/history',
+            label: l10n.history,
+            icon: Icons.history_outlined,
+            activeIcon: Icons.history,
+          ));
+        case '/more':
+          items.add(_DockItemData(
+            route: '/more',
+            label: l10n.more,
+            icon: Icons.apps_outlined,
+            activeIcon: Icons.apps,
+          ));
+        case '/updates':
+          items.add(_DockItemData(
+            route: '/updates',
+            label: l10n.updates,
+            icon: Icons.new_releases_outlined,
+            activeIcon: Icons.new_releases,
+          ));
+        case '/trackerLibrary':
+          items.add(_DockItemData(
+            route: '/trackerLibrary',
+            label: l10n.tracking,
+            icon: Icons.account_tree_outlined,
+            activeIcon: Icons.account_tree,
+          ));
+        case '_enableLibSwitch':
+          items.add(const _DockItemData(
+            route: '_enableLibSwitch',
+            label: 'Hub',
+            icon: Icons.apps_outlined,
+            activeIcon: Icons.apps,
+          ));
+        case '_disableLibSwitch':
+          items.add(_DockItemData(
+            route: '_disableLibSwitch',
+            label: l10n.go_back,
+            icon: Icons.arrow_back,
+            activeIcon: Icons.arrow_back,
+          ));
+      }
     }
 
     return items;
