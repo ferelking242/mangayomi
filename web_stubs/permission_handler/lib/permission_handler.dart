@@ -1,5 +1,7 @@
 library permission_handler;
 
+import 'package:flutter/foundation.dart';
+
 enum PermissionStatus {
   denied,
   granted,
@@ -51,13 +53,23 @@ class Permission {
   static const Permission systemAlertWindow = Permission._('systemAlertWindow');
   static const Permission videos = Permission._('videos');
 
-  // These return PermissionStatus (not Future) so the caller can use
-  // `await permission.request().isGranted` — since awaiting a non-Future
-  // just yields the value, this also works with `(await permission.request()).isGranted`.
-  PermissionStatus get status => PermissionStatus.granted;
-  bool get isGranted => true;
-  bool get isDenied => false;
+  // On web (kIsWeb == true): permissions are not applicable, always report as
+  // granted so the app can continue without blocking on dialogs.
+  //
+  // On native platforms where this stub is compiled in via dependency_overrides:
+  // - status / isGranted → denied  (correct initial state: not yet requested)
+  // - request()          → granted (simulate user tapping "Allow" since the real
+  //                                 plugin dialog is unavailable in this context)
+  //
+  // This fixes the bug where the onboarding screen showed all 3 permissions as
+  // already granted on Android before the user had tapped anything.
+  PermissionStatus get status =>
+      kIsWeb ? PermissionStatus.granted : PermissionStatus.denied;
+  bool get isGranted => kIsWeb;
+  bool get isDenied => !kIsWeb;
   bool get isPermanentlyDenied => false;
+  // request() always returns granted: on web nothing to request, on native the
+  // stub simulates the user accepting the dialog (no real OS dialog available).
   PermissionStatus request() => PermissionStatus.granted;
 }
 

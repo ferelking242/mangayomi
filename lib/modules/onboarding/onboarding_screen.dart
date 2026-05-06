@@ -93,10 +93,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _refreshPermissionStatus() async {
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      // Desktop: nothing to ask for; treat as granted so the user can continue.
+      // Web / Desktop: permissions don't apply; mark all as granted so the
+      // user reaches "Get Started" without having to skip anything.
       setState(() {
         _storageGranted = true;
         _notificationsGranted = true;
+        _installGranted = true;
       });
       return;
     }

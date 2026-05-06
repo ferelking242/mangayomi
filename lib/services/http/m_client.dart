@@ -62,7 +62,12 @@ class MClient {
     rhttp.ClientSettings? settings,
     bool showCloudFlareError = true,
   }) {
-    final appSettings = isar.settings.getSync(227);
+    Settings? appSettings;
+    try {
+      appSettings = isar.settings.getSync(227);
+    } catch (_) {
+      // isar not yet initialized (extension init race); skip optional settings.
+    }
     final useDoH = appSettings?.doHEnabled ?? false;
     final doHProviderId = appSettings?.doHProviderId;
 
@@ -98,7 +103,12 @@ class MClient {
   }
 
   static Map<String, String> getCookiesPref(String url) {
-    final cookiesList = isar.settings.getSync(227)!.cookiesList ?? [];
+    List<MCookie> cookiesList;
+    try {
+      cookiesList = isar.settings.getSync(227)?.cookiesList ?? [];
+    } catch (_) {
+      return {};
+    }
     if (cookiesList.isEmpty) return {};
     final host = Uri.parse(url).host;
     final cookies = cookiesList

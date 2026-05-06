@@ -121,7 +121,7 @@ class _ExtensionScreenState extends ConsumerState<ExtensionScreen> {
         padding: const EdgeInsets.only(top: 10),
         child: streamExtensions.when(
           data: (data) {
-            final filteredData = widget.query.isEmpty
+            final rawFiltered = widget.query.isEmpty
                 ? data
                 : data
                       .where(
@@ -132,6 +132,35 @@ class _ExtensionScreenState extends ConsumerState<ExtensionScreen> {
                             false,
                       )
                       .toList();
+
+            // Deduplicate by name+lang: same extension can appear multiple
+            // times if it is present in several repos with different IDs
+            // (e.g. native-format ID vs Mihon-format hashCode).
+            // Keep the most relevant entry: installed > update-pending > not-installed,
+            // then prefer the one with the higher versionLast.
+            final Map<String, Source> _deduped = {};
+            for (final src in rawFiltered) {
+              final key = '${src.name ?? ''}_${src.lang ?? ''}_${src.itemType.name}';
+              final prev = _deduped[key];
+              if (prev == null) {
+                _deduped[key] = src;
+              } else {
+                final srcAdded = src.isAdded ?? false;
+                final prevAdded = prev.isAdded ?? false;
+                if (srcAdded && !prevAdded) {
+                  _deduped[key] = src;
+                } else if (srcAdded == prevAdded) {
+                  if (compareVersions(
+                        src.versionLast ?? '',
+                        prev.versionLast ?? '',
+                      ) >
+                      0) {
+                    _deduped[key] = src;
+                  }
+                }
+              }
+            }
+            final filteredData = _deduped.values.toList();
 
             final updateEntries = <Source>[];
             final installedEntries = <Source>[];
