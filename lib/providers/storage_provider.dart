@@ -254,6 +254,32 @@ class StorageProvider {
         SourcePreferenceStringValueSchema,
       ];
 
+      // Helper: purge any broken/partial Isar instance stuck in the global
+      // registry.  When Isar.open() throws, isar_community may still have
+      // registered an empty Isar object (with _collections uninitialised)
+      // under the name 'watchtowerDb'.  Returning that object via
+      // Isar.getInstance() and assigning it to `isar` causes every
+      // subsequent isar.settings access to throw:
+      //   LateInitializationError: Field '_collections@...' has not been
+      //   initialized.
+      // We must close (evict) that zombie before any retry.
+      Future<void> evictBrokenInstance() async {
+        try {
+          final zombie = Isar.getInstance('watchtowerDb');
+          if (zombie != null) await zombie.close(deleteFromDisk: false);
+        } catch (_) {}
+      }
+
+      // Helper: delete the on-disk files so the next open starts fresh.
+      Future<void> deleteDbFiles() async {
+        for (final suffix in ['.isar', '.isar.lock', '.isar.tmp']) {
+          try {
+            final f = File('${dir!.path}/watchtowerDb$suffix');
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+        }
+      }
+
       Isar isar;
       try {
         isar = await Isar.open(
@@ -264,29 +290,15 @@ class StorageProvider {
         );
       } catch (e) {
         final eMsg = e.toString();
+        debugPrint('[initDB] Isar.open failed ($eMsg) — evicting zombie, deleting stale DB, retrying');
 
-        // Race condition: another isolate opened the same named instance first.
-        // isar_community tracks instances at native level across isolates, so a
-        // second Isar.open() throws instead of returning the existing handle.
-        if (eMsg.contains('already been opened') || eMsg.contains('already opened')) {
-          final existing = Isar.getInstance('watchtowerDb');
-          if (existing != null && existing.isOpen) return existing;
-          // Instance was opened concurrently — brief wait then retry lookup.
-          await Future.delayed(const Duration(milliseconds: 300));
-          final existing2 = Isar.getInstance('watchtowerDb');
-          if (existing2 != null && existing2.isOpen) return existing2;
-          rethrow;
-        }
+        // Step 1: evict any zombie Isar registered during the failed open.
+        await evictBrokenInstance();
 
-        // "Collection id is invalid" — schema changed between APK versions.
-        // Wipe the stale DB files and reopen from scratch.
-        debugPrint('[initDB] Isar.open failed ($eMsg) — deleting stale DB and retrying');
-        for (final suffix in ['.isar', '.isar.lock', '.isar.tmp']) {
-          try {
-            final f = File('${dir!.path}/watchtowerDb$suffix');
-            if (await f.exists()) await f.delete();
-          } catch (_) {}
-        }
+        // Step 2: delete stale on-disk files (schema mismatch from old build).
+        await deleteDbFiles();
+
+        // Step 3: first retry on a clean slate.
         try {
           isar = await Isar.open(
             schemas,
@@ -295,36 +307,19 @@ class StorageProvider {
             inspector: inspector,
           );
         } catch (e2) {
-          // After wipe, another isolate may have beaten us to re-opening.
-          // Isar.getInstance() is per-Dart-isolate and will return null even
-          // when another isolate holds the instance, so we cannot rely on it
-          // for cross-isolate recovery. Instead, retry Isar.open() after a
-          // brief delay — if the sibling isolate already has a clean DB open
-          // this will either succeed (isar_community cross-isolate support) or
-          // throw again, in which case we give up.
-          final e2Msg = e2.toString();
-          if (e2Msg.contains('already been opened') ||
-              e2Msg.contains('already opened') ||
-              e2Msg.contains('IllegalArg') ||
-              e2Msg.contains('Collection id')) {
-            await Future.delayed(const Duration(milliseconds: 400));
-            // Last-chance check: maybe this isolate already has the handle.
-            final existing = Isar.getInstance('watchtowerDb');
-            if (existing != null && existing.isOpen) return existing;
-            // Try one final open — the sibling isolate should have stabilised
-            // the DB by now, so this should succeed or fail definitively.
-            try {
-              return await Isar.open(
-                schemas,
-                directory: dir!.path,
-                name: "watchtowerDb",
-                inspector: inspector,
-              );
-            } catch (e3) {
-              debugPrint('[initDB] final retry failed: $e3');
-            }
-          }
-          rethrow;
+          debugPrint('[initDB] retry-1 failed ($e2) — evicting again, waiting 500ms, final attempt');
+
+          // The open may have registered another zombie — evict it too.
+          await evictBrokenInstance();
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Step 4: final attempt — let it throw if the DB is unrecoverable.
+          isar = await Isar.open(
+            schemas,
+            directory: dir!.path,
+            name: "watchtowerDb",
+            inspector: inspector,
+          );
         }
       }
 
