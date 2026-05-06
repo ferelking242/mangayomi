@@ -15,7 +15,7 @@ extension GetDownloadCollection on Isar {
 
 const DownloadSchema = CollectionSchema(
   name: r'Download',
-  id: 0,
+  id: 5905484153212786579,
   properties: {
     r'failed': PropertySchema(id: 0, name: r'failed', type: IsarType.long),
     r'isDownload': PropertySchema(

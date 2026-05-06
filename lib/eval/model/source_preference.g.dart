@@ -15,7 +15,7 @@ extension GetSourcePreferenceCollection on Isar {
 
 const SourcePreferenceSchema = CollectionSchema(
   name: r'SourcePreferences',
-  id: 0,
+  id: 4736855879043243045,
   properties: {
     r'checkBoxPreference': PropertySchema(
       id: 0,
@@ -974,7 +974,7 @@ extension GetSourcePreferenceStringValueCollection on Isar {
 
 const SourcePreferenceStringValueSchema = CollectionSchema(
   name: r'SourcePreferenceStringValue',
-  id: 0,
+  id: 8063295595066322236,
   properties: {
     r'key': PropertySchema(id: 0, name: r'key', type: IsarType.string),
     r'sourceId': PropertySchema(id: 1, name: r'sourceId', type: IsarType.long),

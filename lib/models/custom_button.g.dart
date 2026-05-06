@@ -15,7 +15,7 @@ extension GetCustomButtonCollection on Isar {
 
 const CustomButtonSchema = CollectionSchema(
   name: r'CustomButton',
-  id: 0,
+  id: 3146166780828864477,
   properties: {
     r'codeLongPress': PropertySchema(
       id: 0,

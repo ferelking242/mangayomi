@@ -15,7 +15,7 @@ extension GetSourceCollection on Isar {
 
 const SourceSchema = CollectionSchema(
   name: r'Sources',
-  id: 0,
+  id: 897746782445124704,
   properties: {
     r'additionalParams': PropertySchema(
       id: 0,

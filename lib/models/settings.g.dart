@@ -15,7 +15,7 @@ extension GetSettingsCollection on Isar {
 
 const SettingsSchema = CollectionSchema(
   name: r'Settings',
-  id: -0,
+  id: -8656046621518759136,
   properties: {
     r'algorithmWeights': PropertySchema(
       id: 0,

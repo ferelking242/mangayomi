@@ -15,7 +15,7 @@ extension GetTrackCollection on Isar {
 
 const TrackSchema = CollectionSchema(
   name: r'Track',
-  id: 0,
+  id: 6244076704169336260,
   properties: {
     r'finishedReadingDate': PropertySchema(
       id: 0,

@@ -15,7 +15,7 @@ extension GetChapterCollection on Isar {
 
 const ChapterSchema = CollectionSchema(
   name: r'Chapter',
-  id: -0,
+  id: -7604549436611156012,
   properties: {
     r'archivePath': PropertySchema(
       id: 0,

@@ -15,7 +15,7 @@ extension GetHistoryCollection on Isar {
 
 const HistorySchema = CollectionSchema(
   name: r'History',
-  id: 0,
+  id: 1676981785059398080,
   properties: {
     r'chapterId': PropertySchema(
       id: 0,

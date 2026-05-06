@@ -15,7 +15,7 @@ extension GetCategoryCollection on Isar {
 
 const CategorySchema = CollectionSchema(
   name: r'Category',
-  id: 0,
+  id: 5751694338128944171,
   properties: {
     r'forItemType': PropertySchema(
       id: 0,

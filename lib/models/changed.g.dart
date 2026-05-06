@@ -15,7 +15,7 @@ extension GetChangedPartCollection on Isar {
 
 const ChangedPartSchema = CollectionSchema(
   name: r'ChangedPart',
-  id: 0,
+  id: 984304309479278230,
   properties: {
     r'actionType': PropertySchema(
       id: 0,
