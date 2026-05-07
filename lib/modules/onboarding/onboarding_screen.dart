@@ -93,8 +93,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _refreshPermissionStatus() async {
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      // Web / Desktop: permissions don't apply; mark all as granted so the
-      // user reaches "Get Started" without having to skip anything.
       setState(() {
         _storageGranted = true;
         _notificationsGranted = true;
@@ -102,10 +100,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       });
       return;
     }
+    final storage = await Permission.manageExternalStorage.status;
     final notif = await Permission.notification.status;
     final install = await Permission.requestInstallPackages.status;
     if (mounted) {
       setState(() {
+        _storageGranted = storage.isGranted;
         _notificationsGranted = notif.isGranted;
         _installGranted = install.isGranted;
       });

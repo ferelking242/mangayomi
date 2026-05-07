@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:watchtower/models/manga.dart';
 
-/// AnymeX-style discovery tab header used by Watch, Manga and Novel tabs.
-/// LEFT  — 3-D gradient account icon that opens a bottom sheet + greeting text
-/// RIGHT — search icon
-
-class LibraryHeaderBar extends StatelessWidget {
-  final ItemType itemType;
-  const LibraryHeaderBar({super.key, this.itemType = ItemType.anime});
+/// AnymeX-style home header:
+/// LEFT  — app icon + greeting message ("Hey, Guest — What are we doing today?")
+/// RIGHT — 3-D gradient account button that opens a bottom sheet menu
+class HomeHeader extends StatelessWidget {
+  const HomeHeader({super.key});
 
   void _showAccountSheet(BuildContext context) {
     showModalBottomSheet(
@@ -27,53 +24,63 @@ class LibraryHeaderBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+      padding: const EdgeInsets.fromLTRB(20, 8, 16, 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Account 3-D button ──────────────────────────────────────────
+          // ── Logo + greeting ──────────────────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/app_icons/icon.png',
+                width: 38,
+                height: 38,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.visibility_outlined,
+                  color: cs.primary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Hey, Guest 👋',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    "What are we doing today?",
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // ── Account 3-D button ────────────────────────────────────────────
           _Account3DButton(onTap: () => _showAccountSheet(context)),
-          const SizedBox(width: 12),
-
-          // ── Greeting ────────────────────────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Hey, Guest 👋',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                Text(
-                  "What are we doing today?",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: cs.onSurface.withValues(alpha: 0.50),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Search ──────────────────────────────────────────────────────
-          _SearchButton(
-            onTap: () => context.push('/globalSearch',
-                extra: (null as String?, itemType)),
-          ),
         ],
       ),
     );
   }
 }
 
-// ── 3-D gradient account button ───────────────────────────────────────────────
+// ── Shared account button (used in HomeHeader and LibraryHeaderBar) ───────────
 
 class _Account3DButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -88,8 +95,8 @@ class _Account3DButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          width: 42,
-          height: 42,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -103,9 +110,14 @@ class _Account3DButton extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: cs.primary.withValues(alpha: 0.32),
-                blurRadius: 10,
+                color: cs.primary.withValues(alpha: 0.35),
+                blurRadius: 12,
                 offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
             border: Border.all(
@@ -118,57 +130,26 @@ class _Account3DButton extends StatelessWidget {
             children: [
               Positioned(
                 top: 4,
-                left: 6,
-                right: 6,
+                left: 8,
+                right: 8,
                 child: Container(
-                  height: 9,
+                  height: 10,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.white.withValues(alpha: 0.40),
+                        Colors.white.withValues(alpha: 0.42),
                         Colors.white.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
                 ),
               ),
-              const Icon(Icons.person_rounded, color: Colors.white, size: 20),
+              const Icon(Icons.person_rounded, color: Colors.white, size: 22),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Search button ─────────────────────────────────────────────────────────────
-
-class _SearchButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _SearchButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: cs.outline.withValues(alpha: 0.18),
-            ),
-          ),
-          child: Icon(Icons.search_rounded, color: cs.onSurface, size: 22),
         ),
       ),
     );
@@ -192,6 +173,7 @@ class _AccountSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // handle
             Center(
               child: Container(
                 width: 38,
@@ -203,6 +185,8 @@ class _AccountSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // avatar + name
             Row(
               children: [
                 Container(
@@ -211,7 +195,10 @@ class _AccountSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [cs.primary, cs.tertiary],
+                      colors: [
+                        cs.primary,
+                        cs.tertiary,
+                      ],
                     ),
                   ),
                   child: const Icon(Icons.person_rounded,
@@ -221,19 +208,28 @@ class _AccountSheet extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Guest',
-                        style: tt.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800)),
-                    Text('Connect a tracker to sync your lists',
-                        style: tt.bodySmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.55))),
+                    Text(
+                      'Guest',
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Connect a tracker to sync your lists',
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 24),
             Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
+
+            // menu items
             _SheetTile(
               icon: Icons.settings_outlined,
               label: 'Settings',
@@ -259,8 +255,16 @@ class _AccountSheet extends StatelessWidget {
               },
             ),
             _SheetTile(
+              icon: Icons.download_outlined,
+              label: 'Downloads',
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/more');
+              },
+            ),
+            _SheetTile(
               icon: Icons.info_outline_rounded,
-              label: 'About',
+              label: 'About Watchtower',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/more');
@@ -277,8 +281,7 @@ class _SheetTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _SheetTile(
-      {required this.icon, required this.label, required this.onTap});
+  const _SheetTile({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -294,10 +297,8 @@ class _SheetTile extends StatelessWidget {
         ),
         child: Icon(icon, color: cs.primary, size: 20),
       ),
-      title: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      trailing: Icon(Icons.chevron_right_rounded,
-          color: cs.onSurface.withValues(alpha: 0.35)),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurface.withValues(alpha: 0.35)),
       onTap: onTap,
     );
   }

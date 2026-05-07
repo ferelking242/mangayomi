@@ -7,6 +7,7 @@ import 'package:watchtower/modules/home/services/anilist_discovery_service.dart'
 import 'package:watchtower/modules/home/widgets/category_row.dart';
 import 'package:watchtower/modules/home/widgets/discovery_card.dart';
 import 'package:watchtower/modules/home/widgets/hero_carousel.dart';
+import 'package:watchtower/models/manga.dart';
 import 'package:watchtower/modules/home/widgets/library_header_bar.dart';
 
 /// Novel tab — AniList-powered light-novel discover page (trending, popular,
@@ -61,7 +62,7 @@ class NovelDiscoveryScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            const LibraryHeaderBar(),
+            const LibraryHeaderBar(itemType: ItemType.manga),
             Expanded(
               child: asyncHome.when(
                 loading: () =>

@@ -146,6 +146,7 @@ void main(List<String> args) async {
       await Hive.initFlutter(kIsWeb ? null : ((!kIsWeb && Platform.isAndroid) ? "" : hivePath));
       Hive.registerAdapter(TrackSearchAdapter());
       await Hive.openBox('nav_display');
+      await Hive.openBox('ui_prefs');
 
       needsOnboarding = !await onboardingIsComplete();
       runApp(ProviderScope(child: MyApp(), retry: (retryCount, error) => null));

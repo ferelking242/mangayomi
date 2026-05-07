@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:watchtower/modules/more/settings/appearance/providers/app_font_family.dart';
 import 'package:watchtower/modules/more/settings/appearance/providers/theme_mode_state_provider.dart';
+import 'package:watchtower/modules/more/settings/appearance/providers/ui_prefs_provider.dart';
 import 'package:watchtower/modules/more/settings/appearance/widgets/follow_system_theme_button.dart';
 import 'package:watchtower/providers/l10n_providers.dart';
 import 'package:watchtower/utils/extensions/build_context_extensions.dart';
@@ -71,6 +72,13 @@ class AppearanceScreen extends ConsumerWidget {
     final pureBlackDarkMode = ref.watch(pureBlackDarkModeStateProvider);
     final isDarkTheme = ref.watch(themeModeStateProvider);
     bool followSystemTheme = ref.watch(followSystemThemeStateProvider);
+
+    // UI prefs
+    final carouselStyle = ref.watch(carouselStyleProvider);
+    final showSynopsis = ref.watch(carouselSynopsisProvider);
+    final glowEffects = ref.watch(glowEffectsProvider);
+    final kenBurns = ref.watch(kenBurnsProvider);
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n!.appearance)),
       body: SingleChildScrollView(
@@ -116,6 +124,126 @@ class AppearanceScreen extends ConsumerWidget {
                 ),
               ],
             ),
+
+            // ── UI & Discovery ─────────────────────────────────────────────
+            SettingsSection(
+              title: 'UI & Discovery',
+              children: [
+                // Carousel style
+                ListTile(
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.view_carousel_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text('Carousel Style'),
+                  subtitle: Text(
+                    carouselStyleLabels[carouselStyle],
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.secondaryColor,
+                    ),
+                  ),
+                  onTap: () => _showCarouselStyleDialog(context, ref),
+                ),
+
+                // Show synopsis in carousel
+                SwitchListTile(
+                  secondary: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.subject_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text('Show Synopsis in Carousel'),
+                  subtitle: Text(
+                    'Display description below the hero banner',
+                    style: TextStyle(fontSize: 11, color: context.secondaryColor),
+                  ),
+                  value: showSynopsis,
+                  onChanged: (v) =>
+                      ref.read(carouselSynopsisProvider.notifier).set(v),
+                ),
+
+                // Glow effects
+                SwitchListTile(
+                  secondary: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.flare_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text('Glow Effects'),
+                  subtitle: Text(
+                    'Enable glowing shadows on cover images',
+                    style: TextStyle(fontSize: 11, color: context.secondaryColor),
+                  ),
+                  value: glowEffects,
+                  onChanged: (v) =>
+                      ref.read(glowEffectsProvider.notifier).set(v),
+                ),
+
+                // Ken Burns (detail screen)
+                SwitchListTile(
+                  secondary: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.animation_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text('Animated Detail Backgrounds'),
+                  subtitle: Text(
+                    'Ken Burns pan/zoom on detail screen banners',
+                    style: TextStyle(fontSize: 11, color: context.secondaryColor),
+                  ),
+                  value: kenBurns,
+                  onChanged: (v) =>
+                      ref.read(kenBurnsProvider.notifier).set(v),
+                ),
+              ],
+            ),
+
             SettingsSection(
               title: l10n.timestamp,
               children: [
@@ -125,6 +253,49 @@ class AppearanceScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Carousel style dialog ────────────────────────────────────────────────
+
+  void _showCarouselStyleDialog(BuildContext context, WidgetRef ref) {
+    final current = ref.read(carouselStyleProvider);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Carousel Style'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              carouselStyleLabels.length,
+              (i) => RadioListTile<int>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                value: i,
+                groupValue: current,
+                title: Text(carouselStyleLabels[i]),
+                onChanged: (v) {
+                  if (v != null) {
+                    ref.read(carouselStyleProvider.notifier).set(v);
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: context.primaryColor),
+            ),
+          ),
+        ],
       ),
     );
   }

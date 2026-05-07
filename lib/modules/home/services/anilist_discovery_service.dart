@@ -5,6 +5,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Core media model
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// A lightweight media model populated from AniList GraphQL responses.
 class AnilistMedia {
   final int id;
@@ -77,7 +81,109 @@ class AnilistMedia {
   }
 }
 
-/// Bundle of all home rows fetched from AniList in a single request.
+// ─────────────────────────────────────────────────────────────────────────────
+// Extended detail models
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AnilistCharacter {
+  final int id;
+  final String name;
+  final String? imageUrl;
+  final String? role; // MAIN | SUPPORTING | BACKGROUND
+
+  const AnilistCharacter({
+    required this.id,
+    required this.name,
+    this.imageUrl,
+    this.role,
+  });
+
+  factory AnilistCharacter.fromJson(
+      Map<String, dynamic> node, String? role) {
+    final name = (node['name'] as Map?)?.cast<String, dynamic>() ?? {};
+    final image = (node['image'] as Map?)?.cast<String, dynamic>() ?? {};
+    return AnilistCharacter(
+      id: (node['id'] as num).toInt(),
+      name: (name['full'] as String?) ?? 'Unknown',
+      imageUrl: image['medium'] as String?,
+      role: role,
+    );
+  }
+}
+
+class AnilistRelation {
+  final int id;
+  final String title;
+  final String type; // ANIME | MANGA
+  final String? format;
+  final String? coverImage;
+  final String? relationType; // SEQUEL | PREQUEL | ADAPTATION | etc.
+
+  const AnilistRelation({
+    required this.id,
+    required this.title,
+    required this.type,
+    this.format,
+    this.coverImage,
+    this.relationType,
+  });
+
+  factory AnilistRelation.fromNode(
+      Map<String, dynamic> node, String? relationType) {
+    final title = (node['title'] as Map?)?.cast<String, dynamic>() ?? {};
+    final cover = (node['coverImage'] as Map?)?.cast<String, dynamic>() ?? {};
+    return AnilistRelation(
+      id: (node['id'] as num).toInt(),
+      title: (title['english'] as String?) ??
+          (title['romaji'] as String?) ??
+          'Unknown',
+      type: (node['type'] as String?) ?? 'ANIME',
+      format: node['format'] as String?,
+      coverImage: (cover['large'] as String?),
+      relationType: relationType,
+    );
+  }
+}
+
+/// Rich media detail — all fields + characters + relations + studios + tags.
+class AnilistMediaDetail {
+  final AnilistMedia base;
+  final String? status; // FINISHED | RELEASING | NOT_YET_RELEASED | CANCELLED | HIATUS
+  final String? season; // WINTER | SPRING | SUMMER | FALL
+  final int? seasonYear;
+  final int? startYear;
+  final int? duration; // minutes per episode
+  final String? source; // ORIGINAL | MANGA | NOVEL | LIGHT_NOVEL | ...
+  final String? trailerSite;
+  final String? trailerUrl;
+  final List<String> studios;
+  final List<AnilistCharacter> characters;
+  final List<AnilistRelation> relations;
+  final List<String> tags;
+  final List<AnilistMedia> recommendations;
+
+  const AnilistMediaDetail({
+    required this.base,
+    this.status,
+    this.season,
+    this.seasonYear,
+    this.startYear,
+    this.duration,
+    this.source,
+    this.trailerSite,
+    this.trailerUrl,
+    this.studios = const [],
+    this.characters = const [],
+    this.relations = const [],
+    this.tags = const [],
+    this.recommendations = const [],
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Home data bundle
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AnilistHome {
   final List<AnilistMedia> trendingAnimes;
   final List<AnilistMedia> popularAnimes;
@@ -111,6 +217,10 @@ class AnilistHome {
 }
 
 const _anilistEndpoint = 'https://graphql.anilist.co';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Home query
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Combined AniList query — anime, manga, manhwa/manhua origin, light novels.
 const _anilistHomeQuery = r'''
@@ -390,4 +500,158 @@ Future<AnilistBrowsePage> _fetchAnilistBrowse(
 final anilistBrowseProvider = FutureProvider.autoDispose
     .family<AnilistBrowsePage, AnilistBrowseFilter>((ref, filter) {
   return _fetchAnilistBrowse(filter);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full detail query (characters, relations, studios, tags, recommendations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _anilistDetailQuery = r'''
+query MediaDetail($id: Int!) {
+  Media(id: $id) {
+    id type format status season seasonYear episodes chapters duration source
+    averageScore bannerImage description countryOfOrigin
+    title { romaji english native }
+    coverImage { large extraLarge }
+    genres
+    startDate { year }
+    studios(isMain: true) { nodes { name } }
+    tags { name rank isMediaSpoiler }
+    characters(sort: [ROLE, RELEVANCE], perPage: 12) {
+      nodes { id name { full } image { medium } }
+      edges { role }
+    }
+    relations {
+      nodes { id type format title { romaji english } coverImage { large } }
+      edges { relationType }
+    }
+    recommendations(sort: RATING_DESC, perPage: 8) {
+      nodes {
+        mediaRecommendation {
+          id type format title { romaji english } coverImage { large } averageScore
+        }
+      }
+    }
+    externalLinks { site url }
+    trailer { id site }
+  }
+}
+''';
+
+Future<AnilistMediaDetail> _fetchMediaDetail(int id) async {
+  final res = await http
+      .post(
+        Uri.parse(_anilistEndpoint),
+        headers: const {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'query': _anilistDetailQuery,
+          'variables': {'id': id},
+        }),
+      )
+      .timeout(const Duration(seconds: 20));
+
+  if (res.statusCode != 200) {
+    throw Exception('AniList detail failed (${res.statusCode})');
+  }
+
+  final body = jsonDecode(res.body) as Map<String, dynamic>;
+  final m = (body['data']?['Media'] as Map?)?.cast<String, dynamic>();
+  if (m == null) throw Exception('Media not found');
+
+  // base media
+  final base = AnilistMedia.fromJson(m);
+
+  // studios
+  final studiosRaw = (m['studios']?['nodes'] as List?) ?? [];
+  final studios = studiosRaw
+      .whereType<Map>()
+      .map((s) => (s['name'] as String?) ?? '')
+      .where((s) => s.isNotEmpty)
+      .toList(growable: false);
+
+  // characters
+  final charNodes = (m['characters']?['nodes'] as List?) ?? [];
+  final charEdges = (m['characters']?['edges'] as List?) ?? [];
+  final characters = <AnilistCharacter>[];
+  for (var i = 0; i < charNodes.length; i++) {
+    final node = charNodes[i] as Map?;
+    if (node == null) continue;
+    final role = i < charEdges.length
+        ? (charEdges[i] as Map?)?['role'] as String?
+        : null;
+    characters.add(AnilistCharacter.fromJson(
+        node.cast<String, dynamic>(), role));
+  }
+
+  // relations
+  final relNodes = (m['relations']?['nodes'] as List?) ?? [];
+  final relEdges = (m['relations']?['edges'] as List?) ?? [];
+  final relations = <AnilistRelation>[];
+  for (var i = 0; i < relNodes.length; i++) {
+    final node = relNodes[i] as Map?;
+    if (node == null) continue;
+    final relType = i < relEdges.length
+        ? (relEdges[i] as Map?)?['relationType'] as String?
+        : null;
+    relations.add(AnilistRelation.fromNode(
+        node.cast<String, dynamic>(), relType));
+  }
+
+  // tags (filter spoilers, take top 10)
+  final tagsRaw = (m['tags'] as List?) ?? [];
+  final tags = tagsRaw
+      .whereType<Map>()
+      .where((t) => t['isMediaSpoiler'] != true)
+      .map((t) => (t['name'] as String?) ?? '')
+      .where((t) => t.isNotEmpty)
+      .take(10)
+      .toList(growable: false);
+
+  // recommendations
+  final recNodes =
+      ((m['recommendations']?['nodes'] as List?) ?? []);
+  final recommendations = recNodes
+      .whereType<Map>()
+      .map((n) => n['mediaRecommendation'] as Map?)
+      .whereType<Map>()
+      .map((r) => AnilistMedia.fromJson(r.cast<String, dynamic>()))
+      .toList(growable: false);
+
+  // trailer URL
+  String? trailerSite = m['trailer']?['site'] as String?;
+  String? trailerUrl;
+  final trailerId = m['trailer']?['id'] as String?;
+  if (trailerId != null && trailerSite == 'youtube') {
+    trailerUrl = 'https://www.youtube.com/watch?v=$trailerId';
+  } else if (trailerId != null && trailerSite == 'dailymotion') {
+    trailerUrl = 'https://www.dailymotion.com/video/$trailerId';
+  }
+
+  return AnilistMediaDetail(
+    base: base,
+    status: m['status'] as String?,
+    season: m['season'] as String?,
+    seasonYear: (m['seasonYear'] as num?)?.toInt(),
+    startYear: (m['startDate']?['year'] as num?)?.toInt(),
+    duration: (m['duration'] as num?)?.toInt(),
+    source: m['source'] as String?,
+    trailerSite: trailerSite,
+    trailerUrl: trailerUrl,
+    studios: studios,
+    characters: characters,
+    relations: relations,
+    tags: tags,
+    recommendations: recommendations,
+  );
+}
+
+/// Fetches full media detail by AniList ID.
+/// Falls back gracefully — the screen already shows basic info from the
+/// passed [AnilistMedia], this provider adds characters/relations/studios.
+final anilistMediaDetailProvider =
+    FutureProvider.autoDispose.family<AnilistMediaDetail, int>((ref, id) {
+  return _fetchMediaDetail(id);
 });

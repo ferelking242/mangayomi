@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:watchtower/models/manga.dart';
 import 'package:watchtower/modules/home/widgets/library_header_bar.dart';
 
 class MusicDiscoveryScreen extends ConsumerWidget {
@@ -16,7 +17,7 @@ class MusicDiscoveryScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            const LibraryHeaderBar(),
+            const LibraryHeaderBar(itemType: ItemType.music),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

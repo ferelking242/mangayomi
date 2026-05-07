@@ -6,8 +6,9 @@ import 'package:watchtower/modules/anime/anime_discovery_screen.dart'
 import 'package:watchtower/modules/home/services/anilist_discovery_service.dart';
 import 'package:watchtower/modules/home/widgets/discovery_card.dart';
 import 'package:watchtower/modules/home/widgets/hero_carousel.dart';
+import 'package:watchtower/modules/home/widgets/home_header.dart';
 
-/// MovieBox-style home screen — hero banner + curated content rows.
+/// MovieBox-style home screen — AnymeX-style header + hero banner + curated rows.
 class WatchtowerHomeScreen extends ConsumerWidget {
   const WatchtowerHomeScreen({super.key});
 
@@ -28,9 +29,7 @@ class WatchtowerHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncHome = ref.watch(anilistHomeProvider);
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -56,50 +55,19 @@ class WatchtowerHomeScreen extends ConsumerWidget {
             return CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // ── Top bar ────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Watchtower',
-                          style: tt.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            color: cs.primary,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton.filledTonal(
-                          onPressed: () => context.go('/browse'),
-                          icon: const Icon(Icons.explore_outlined, size: 22),
-                          tooltip: 'Browse sources',
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton.filledTonal(
-                          onPressed: () => context.go('/history'),
-                          icon: const Icon(Icons.history_rounded, size: 22),
-                          tooltip: 'History',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // ── AnymeX-style header ─────────────────────────────────────
+                const SliverToBoxAdapter(child: HomeHeader()),
 
                 // ── Hero carousel ───────────────────────────────────────────
                 if (heroItems.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 240,
-                      child: HeroCarousel(
-                        items: heroItems.take(8).toList(),
-                        onItemTap: (m) => _openDetail(context, m),
-                      ),
+                    child: HeroCarousel(
+                      items: heroItems.take(8).toList(),
+                      onItemTap: (m) => _openDetail(context, m),
                     ),
                   ),
 
-                // ── Category chips ──────────────────────────────────────────
+                // ── Explore chips ───────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -258,7 +226,7 @@ class WatchtowerHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Horizontal media row ────────────────────────────────────────────────────
+// ── Horizontal media row ─────────────────────────────────────────────────────
 
 class _MediaRow extends StatelessWidget {
   final String title;
@@ -313,7 +281,7 @@ class _MediaRow extends StatelessWidget {
   }
 }
 
-// ── Genre chip ──────────────────────────────────────────────────────────────
+// ── Genre chip ───────────────────────────────────────────────────────────────
 
 class _GenreChip extends StatelessWidget {
   final String label;

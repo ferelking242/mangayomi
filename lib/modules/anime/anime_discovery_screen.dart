@@ -48,7 +48,7 @@ class AnimeDiscoveryScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            const LibraryHeaderBar(),
+            const LibraryHeaderBar(itemType: ItemType.anime),
             Expanded(
               child: asyncHome.when(
                 loading: () =>
