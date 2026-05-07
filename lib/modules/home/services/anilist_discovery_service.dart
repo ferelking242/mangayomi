@@ -579,9 +579,8 @@ Future<AnilistMediaDetail> _fetchMediaDetail(int id) async {
   for (var i = 0; i < charNodes.length; i++) {
     final node = charNodes[i] as Map?;
     if (node == null) continue;
-    final role = i < charEdges.length
-        ? (charEdges[i] as Map?)?['role'] as String?
-        : null;
+    final roleMap = i < charEdges.length ? charEdges[i] as Map? : null;
+    final role = roleMap?['role'] as String?;
     characters.add(AnilistCharacter.fromJson(
         node.cast<String, dynamic>(), role));
   }
@@ -593,9 +592,8 @@ Future<AnilistMediaDetail> _fetchMediaDetail(int id) async {
   for (var i = 0; i < relNodes.length; i++) {
     final node = relNodes[i] as Map?;
     if (node == null) continue;
-    final relType = i < relEdges.length
-        ? (relEdges[i] as Map?)?['relationType'] as String?
-        : null;
+    final relTypeMap = i < relEdges.length ? relEdges[i] as Map? : null;
+    final relType = relTypeMap?['relationType'] as String?;
     relations.add(AnilistRelation.fromNode(
         node.cast<String, dynamic>(), relType));
   }
