@@ -41,8 +41,35 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Web (WASM – avoids dart2js 64-bit int limits)
-        run: flutter build web --wasm --base-href /watchtower/
+      - name: Patch pseudom CSSParser for dart2js
+        run: |
+          FILE=$(find ~/.pub-cache -name "CSSParser.dart" -path "*/pseudom*" 2>/dev/null | head -1)
+          if [ -n "$FILE" ]; then
+            sed -i 's/& -3765256679076942294/\& 0/g' "$FILE"
+            sed -i 's/& 4626330031550017026/\& 0/g' "$FILE"
+            sed -i 's/& 5779244251887978624/\& 0/g' "$FILE"
+            sed -i 's/& -4597022382133018102/\& 0/g' "$FILE"
+            sed -i 's/& -4020561629828808022/\& 0/g' "$FILE"
+            sed -i 's/& -2612335174470078806/\& 0/g' "$FILE"
+            echo "Patched $FILE"
+          else
+            echo "pseudom CSSParser.dart not found, skipping patch"
+          fi
+
+      - name: Patch large int literals in Isar .g.dart files for dart2js
+        run: |
+          COUNT=0
+          for f in $(find lib -name "*.g.dart" 2>/dev/null); do
+            if grep -qE '[0-9]{17,}' "$f"; then
+              sed -i -E 's/([^0-9'\''"@])[0-9]{17,}([^0-9'\''"])/\10\2/g' "$f"
+              COUNT=$((COUNT + 1))
+              echo "Patched: $f"
+            fi
+          done
+          echo "Total files patched: $COUNT"
+
+      - name: Build Web
+        run: flutter build web --no-tree-shake-icons --release --base-href /watchtower/
 
       - name: Show build size
         run: |

@@ -361,7 +361,7 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Studios ────────────────────────────────────────────────
-                if (detail.valueOrNull?.studios.isNotEmpty == true)
+                if (detail.asData?.value?.studios.isNotEmpty == true)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -377,7 +377,7 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: detail.valueOrNull!.studios
+                              children: detail.asData!.value!.studios
                                   .map((s) => _StudioPill(s))
                                   .toList(),
                             ),
@@ -387,11 +387,11 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                     ),
                   ),
 
-                if (detail.valueOrNull?.studios.isNotEmpty == true)
+                if (detail.asData?.value?.studios.isNotEmpty == true)
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Tags ───────────────────────────────────────────────────
-                if (detail.valueOrNull?.tags.isNotEmpty == true)
+                if (detail.asData?.value?.tags.isNotEmpty == true)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -407,7 +407,7 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                             Wrap(
                               spacing: 7,
                               runSpacing: 7,
-                              children: detail.valueOrNull!.tags
+                              children: detail.asData!.value!.tags
                                   .map((t) => _TagPill(t))
                                   .toList(),
                             ),
@@ -417,34 +417,34 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                     ),
                   ),
 
-                if (detail.valueOrNull?.tags.isNotEmpty == true)
+                if (detail.asData?.value?.tags.isNotEmpty == true)
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Characters ─────────────────────────────────────────────
-                if (detail.valueOrNull?.characters.isNotEmpty == true)
+                if (detail.asData?.value?.characters.isNotEmpty == true)
                   _HorizontalSection(
                     title: 'Characters',
                     icon: Icons.people_outline_rounded,
                     height: 130,
-                    itemCount: detail.valueOrNull!.characters.length,
+                    itemCount: detail.asData!.value!.characters.length,
                     itemBuilder: (i) {
-                      final c = detail.valueOrNull!.characters[i];
+                      final c = detail.asData!.value!.characters[i];
                       return _CharacterCard(character: c);
                     },
                   ),
 
-                if (detail.valueOrNull?.characters.isNotEmpty == true)
+                if (detail.asData?.value?.characters.isNotEmpty == true)
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Relations ──────────────────────────────────────────────
-                if (detail.valueOrNull?.relations.isNotEmpty == true)
+                if (detail.asData?.value?.relations.isNotEmpty == true)
                   _HorizontalSection(
                     title: 'Related',
                     icon: Icons.account_tree_outlined,
                     height: 180,
-                    itemCount: detail.valueOrNull!.relations.length,
+                    itemCount: detail.asData!.value!.relations.length,
                     itemBuilder: (i) {
-                      final r = detail.valueOrNull!.relations[i];
+                      final r = detail.asData!.value!.relations[i];
                       return _RelationCard(
                         relation: r,
                         onTap: () {
@@ -462,18 +462,18 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                     },
                   ),
 
-                if (detail.valueOrNull?.relations.isNotEmpty == true)
+                if (detail.asData?.value?.relations.isNotEmpty == true)
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Recommendations ────────────────────────────────────────
-                if (detail.valueOrNull?.recommendations.isNotEmpty == true)
+                if (detail.asData?.value?.recommendations.isNotEmpty == true)
                   _HorizontalSection(
                     title: 'You Might Also Like',
                     icon: Icons.thumb_up_outlined,
                     height: 190,
-                    itemCount: detail.valueOrNull!.recommendations.length,
+                    itemCount: detail.asData!.value!.recommendations.length,
                     itemBuilder: (i) {
-                      final r = detail.valueOrNull!.recommendations[i];
+                      final r = detail.asData!.value!.recommendations[i];
                       return _RecommendCard(
                         media: r,
                         onTap: () =>
@@ -482,7 +482,7 @@ class _AnilistDetailScreenState extends ConsumerState<AnilistDetailScreen> {
                     },
                   ),
 
-                if (detail.valueOrNull?.recommendations.isNotEmpty == true)
+                if (detail.asData?.value?.recommendations.isNotEmpty == true)
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // ── Loading indicator for detail ───────────────────────────
